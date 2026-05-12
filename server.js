@@ -1,6 +1,5 @@
 require('dotenv').config();
 
-const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -20,7 +19,7 @@ const {
   publicUser,
   bootstrapAdmin,
 } = require('./lib/users');
-const { rebuildClaudeMd, CLAUDE_MD_PATH, readClaudeMd } = require('./lib/claude-md');
+const { rebuildClaudeMd, readClaudeMd } = require('./lib/claude-md');
 const { saveLikedVideoToVault } = require('./lib/vault');
 const {
   recordDislikeForLearning,
@@ -37,28 +36,63 @@ const {
   tagsFor,
   descriptionFor,
 } = require('./lib/playbook');
-const { putObject, deleteObject, r2KeyForUrl, r2Configured, publicUrlFor } = require('./lib/r2');
+const { putObject, deleteObject, r2KeyForUrl, r2Configured } = require('./lib/r2');
 const { syncFromDrive } = require('./lib/drive-sync');
-
-const VIDEOS_PATH = path.join(__dirname, 'data', 'videos.json');
-const REVIEWS_PATH = path.join(__dirname, 'data', 'reviews.json');
+const { getDb } = require('./lib/db');
 
 const app = express();
-// 25 MB is enough for a base64-encoded image (~18MB raw).
 app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
 
-function readJson(p, fallback) {
-  if (!fs.existsSync(p)) return fallback;
+function tryParse(s, fallback) {
   try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
+    return JSON.parse(s);
   } catch {
     return fallback;
   }
 }
-function writeJson(p, data) {
-  fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
+
+function rowToVideo(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    src: r.src,
+    poster: r.poster,
+    tags: tryParse(r.tags, []),
+    prompt: r.prompt,
+    postedAt: r.posted_at,
+    source: tryParse(r.source, {}),
+  };
+}
+function rowToReview(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    videoId: r.video_id,
+    userId: r.user_id,
+    username: r.username,
+    verdict: r.verdict,
+    comment: r.comment,
+    at: r.at,
+  };
+}
+
+function listVideos() {
+  return getDb()
+    .prepare('SELECT * FROM videos ORDER BY posted_at')
+    .all()
+    .map(rowToVideo);
+}
+function listReviews() {
+  return getDb()
+    .prepare('SELECT * FROM reviews ORDER BY at')
+    .all()
+    .map(rowToReview);
+}
+function getVideoById(id) {
+  return rowToVideo(getDb().prepare('SELECT * FROM videos WHERE id = ?').get(id));
 }
 
 // ---------- auth middleware ----------
@@ -79,7 +113,6 @@ function requireAdmin(req, res, next) {
     next();
   });
 }
-// Bearer-token auth for the n8n / external workflow API surface.
 function requireAdminToken(req, res, next) {
   const expected = process.env.ADMIN_API_TOKEN;
   if (!expected) return res.status(503).json({ error: 'ADMIN_API_TOKEN not set' });
@@ -88,7 +121,6 @@ function requireAdminToken(req, res, next) {
   if (!constantTimeEqual(got, expected)) return res.status(401).json({ error: 'bad token' });
   next();
 }
-// Accept EITHER an admin session cookie OR the bearer token.
 function requireAdminOrToken(req, res, next) {
   const session = readSession(req);
   if (session) {
@@ -152,7 +184,6 @@ app.get('/api/me', requireAuth, (req, res) => {
 });
 
 app.patch('/api/me', requireAuth, async (req, res) => {
-  // The only profile field a user can edit is their username.
   try {
     const { username } = req.body || {};
     const updated = await updateUsername(req.user.id, username);
@@ -162,10 +193,10 @@ app.patch('/api/me', requireAuth, async (req, res) => {
   }
 });
 
-// ---------- feed routes ----------
+// ---------- feed ----------
 app.get('/api/videos', requireAuth, (req, res) => {
-  const videos = readJson(VIDEOS_PATH, []);
-  const reviews = readJson(REVIEWS_PATH, []);
+  const videos = listVideos();
+  const reviews = listReviews();
   const byVideo = {};
   for (const r of reviews) {
     if (!byVideo[r.videoId]) byVideo[r.videoId] = [];
@@ -187,18 +218,17 @@ app.get('/api/videos', requireAuth, (req, res) => {
 });
 
 // Each user gets at most one verdict (like/dislike) and one comment per video.
-// Re-submitting upserts. Submitting the same verdict again toggles it off.
+// Submitting the same verdict again toggles it off.
 async function handleReview(req, res, { kindOverride } = {}) {
   const { videoId, verdict: vIn, comment } = req.body || {};
   const verdict = kindOverride || vIn;
   if (!videoId || !['like', 'dislike', 'comment'].includes(verdict)) {
     return res.status(400).json({ error: 'videoId + verdict (like|dislike|comment) required' });
   }
-  const videos = readJson(VIDEOS_PATH, []);
-  const video = videos.find((v) => v.id === videoId);
+  const video = getVideoById(videoId);
   if (!video) return res.status(404).json({ error: 'video not found' });
 
-  const reviews = readJson(REVIEWS_PATH, []);
+  const db = getDb();
   const userId = req.user.id;
   const username = req.user.username;
   const text = typeof comment === 'string' ? comment.trim() : '';
@@ -209,58 +239,83 @@ async function handleReview(req, res, { kindOverride } = {}) {
   let vault = null;
 
   if (verdict === 'comment') {
-    const idx = reviews.findIndex(
-      (r) => r.userId === userId && r.videoId === videoId && r.verdict === 'comment',
-    );
-    if (!text && idx !== -1) {
-      reviews.splice(idx, 1);
+    const existingRow = db
+      .prepare(
+        "SELECT * FROM reviews WHERE user_id = ? AND video_id = ? AND verdict = 'comment'",
+      )
+      .get(userId, videoId);
+    const existing = rowToReview(existingRow);
+
+    if (!text && existing) {
+      db.prepare('DELETE FROM reviews WHERE id = ?').run(existing.id);
       action = 'removed';
     } else if (!text) {
       return res.status(400).json({ error: 'comment is empty' });
-    } else {
-      const existing = idx === -1 ? null : reviews[idx];
+    } else if (existing) {
+      const at = new Date().toISOString();
+      db.prepare('UPDATE reviews SET comment = ?, at = ?, username = ? WHERE id = ?').run(
+        text,
+        at,
+        username,
+        existing.id,
+      );
       review = {
-        id: existing?.id || newId(),
+        id: existing.id,
         videoId,
         userId,
         username,
         verdict: 'comment',
         comment: text,
-        at: new Date().toISOString(),
+        at,
       };
-      if (idx === -1) reviews.push(review);
-      else reviews[idx] = review;
-      action = existing ? 'updated' : 'added';
+      action = 'updated';
+      recordCommentForLearning(video, review, req.user);
+    } else {
+      const id = newId();
+      const at = new Date().toISOString();
+      db.prepare(
+        'INSERT INTO reviews (id, video_id, user_id, username, verdict, comment, at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ).run(id, videoId, userId, username, 'comment', text, at);
+      review = { id, videoId, userId, username, verdict: 'comment', comment: text, at };
+      action = 'added';
       recordCommentForLearning(video, review, req.user);
     }
   } else {
     // like / dislike — one verdict slot per (userId, videoId)
-    const idx = reviews.findIndex(
-      (r) =>
-        r.userId === userId &&
-        r.videoId === videoId &&
-        (r.verdict === 'like' || r.verdict === 'dislike'),
-    );
-    const existing = idx === -1 ? null : reviews[idx];
+    const existingRow = db
+      .prepare(
+        "SELECT * FROM reviews WHERE user_id = ? AND video_id = ? AND verdict IN ('like', 'dislike')",
+      )
+      .get(userId, videoId);
+    const existing = rowToReview(existingRow);
 
     if (existing && existing.verdict === verdict && !text) {
-      // toggle off
-      reviews.splice(idx, 1);
+      db.prepare('DELETE FROM reviews WHERE id = ?').run(existing.id);
       action = 'removed';
+    } else if (existing) {
+      const at = new Date().toISOString();
+      db.prepare(
+        'UPDATE reviews SET verdict = ?, comment = ?, at = ?, username = ? WHERE id = ?',
+      ).run(verdict, text, at, username, existing.id);
+      review = { id: existing.id, videoId, userId, username, verdict, comment: text, at };
+      action = 'updated';
+      if (verdict === 'like') {
+        try {
+          vault = await saveLikedVideoToVault(video, review, req.user);
+        } catch (e) {
+          console.warn('[review] vault save failed:', e.message);
+        }
+      } else if (verdict === 'dislike') {
+        recordDislikeForLearning(video, review, req.user);
+      }
     } else {
-      review = {
-        id: existing?.id || newId(),
-        videoId,
-        userId,
-        username,
-        verdict,
-        comment: text,
-        at: new Date().toISOString(),
-      };
-      if (idx === -1) reviews.push(review);
-      else reviews[idx] = review;
-      action = existing ? 'updated' : 'added';
-
+      const id = newId();
+      const at = new Date().toISOString();
+      db.prepare(
+        'INSERT INTO reviews (id, video_id, user_id, username, verdict, comment, at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ).run(id, videoId, userId, username, verdict, text, at);
+      review = { id, videoId, userId, username, verdict, comment: text, at };
+      action = 'added';
       if (verdict === 'like') {
         try {
           vault = await saveLikedVideoToVault(video, review, req.user);
@@ -273,8 +328,7 @@ async function handleReview(req, res, { kindOverride } = {}) {
     }
   }
 
-  writeJson(REVIEWS_PATH, reviews);
-  rebuildClaudeMd(reviews, videos);
+  rebuildClaudeMd(listReviews(), listVideos());
 
   res.json({ ok: true, action, review, vault });
 }
@@ -285,14 +339,9 @@ app.post('/api/comment', requireAuth, (req, res) =>
 );
 
 // ---------- exposed CLAUDE.md ----------
-// Wrapped in an HTML page with a back link so it doesn't look like a
-// no-escape raw-markdown dead end.
 app.get('/api/preferences', requireAuth, (req, res) => {
   const md = readClaudeMd();
-  const escaped = md
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  const escaped = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   res.type('html').send(`<!doctype html>
 <html lang="en">
 <head>
@@ -333,8 +382,6 @@ app.get('/api/admin/learning-queue', requireAdminToken, (req, res) => {
   res.json(readLearningQueue());
 });
 
-// Compose the prompt n8n should send to the video-gen API (Higgsfield etc.).
-// Bakes in the live CLAUDE.md context plus recent like/dislike notes.
 app.get('/api/admin/next-prompt', requireAdminToken, (req, res) => {
   const composed = composePrompt(readClaudeMd());
   res.json(composed);
@@ -349,12 +396,6 @@ app.post('/api/admin/publish', requireAdminToken, (req, res) => {
   }
 });
 
-// ---------- n8n-orchestrated pipeline endpoints ----------
-// These let n8n own the orchestration while keeping playbook composition,
-// R2 staging, and publish on the server (where the secrets and templates
-// already live).
-
-// Pick a fresh plan and return everything n8n needs to run one generation.
 app.get('/api/admin/plan', requireAdminToken, (req, res) => {
   const plan = pickPlan();
   const imagePrompt = composeImagePrompt(plan);
@@ -363,7 +404,6 @@ app.get('/api/admin/plan', requireAdminToken, (req, res) => {
     process.env.SUBJECT_A_REFERENCE,
     process.env.SUBJECT_B_REFERENCE,
   ].filter(Boolean);
-
   res.json({
     plan,
     imagePrompt,
@@ -375,8 +415,6 @@ app.get('/api/admin/plan', requireAdminToken, (req, res) => {
   });
 });
 
-// Accept a base64-encoded image, push it to R2 staging, return the public URL.
-// n8n hands the Gemini-generated image to this endpoint so DoP can fetch it.
 app.post('/api/admin/stage-image', requireAdminToken, async (req, res) => {
   try {
     const { data, mimeType } = req.body || {};
@@ -393,13 +431,11 @@ app.post('/api/admin/stage-image', requireAdminToken, async (req, res) => {
         : 'jpg';
     const key = `staging/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
     const buf = Buffer.from(data, 'base64');
-    const result = await putObject({
-      key,
-      body: buf,
-      contentType: mimeType || 'image/png',
-    });
+    const result = await putObject({ key, body: buf, contentType: mimeType || 'image/png' });
     if (!result?.url) {
-      return res.status(503).json({ error: 'staging upload failed (R2_PUBLIC_BASE_URL not set?)' });
+      return res
+        .status(503)
+        .json({ error: 'staging upload failed (R2_PUBLIC_BASE_URL not set?)' });
     }
     res.json({ ok: true, key: result.key, url: result.url });
   } catch (e) {
@@ -408,7 +444,6 @@ app.post('/api/admin/stage-image', requireAdminToken, async (req, res) => {
 });
 
 // ---------- admin actions (admin session OR bearer token) ----------
-// Used by both the UI "+ Generate" button and the n8n scheduled workflow.
 app.post('/api/admin/generate-one', requireAdminOrToken, async (req, res) => {
   try {
     const prompt = (req.body && req.body.prompt) || '';
@@ -419,7 +454,6 @@ app.post('/api/admin/generate-one', requireAdminOrToken, async (req, res) => {
   }
 });
 
-// Pull any new videos from the configured Google Drive folder into the feed.
 app.post('/api/admin/sync-drive', requireAdminOrToken, async (req, res) => {
   try {
     const result = await syncFromDrive();
@@ -429,26 +463,22 @@ app.post('/api/admin/sync-drive', requireAdminOrToken, async (req, res) => {
   }
 });
 
-// Admin can delete any video for any reason. Removes the video, drops every
-// review/comment tied to it, and (when the source URL is in R2) deletes the
-// underlying file from the bucket too.
 app.delete('/api/admin/videos/:id', requireAdminOrToken, async (req, res) => {
   try {
     const videoId = req.params.id;
-    const videos = readJson(VIDEOS_PATH, []);
-    const idx = videos.findIndex((v) => v.id === videoId);
-    if (idx === -1) return res.status(404).json({ error: 'video not found' });
-    const removed = videos.splice(idx, 1)[0];
-    writeJson(VIDEOS_PATH, videos);
+    const db = getDb();
+    const video = getVideoById(videoId);
+    if (!video) return res.status(404).json({ error: 'video not found' });
 
-    const reviews = readJson(REVIEWS_PATH, []);
-    const remainingReviews = reviews.filter((r) => r.videoId !== videoId);
-    const reviewsRemoved = reviews.length - remainingReviews.length;
-    writeJson(REVIEWS_PATH, remainingReviews);
+    const reviewsRemoved = db
+      .prepare('SELECT COUNT(*) as n FROM reviews WHERE video_id = ?')
+      .get(videoId).n;
+    // ON DELETE CASCADE cleans up reviews automatically.
+    db.prepare('DELETE FROM videos WHERE id = ?').run(videoId);
 
     let r2Removed = false;
     let r2Error = null;
-    const key = r2KeyForUrl(removed.src);
+    const key = r2KeyForUrl(video.src);
     if (key && r2Configured()) {
       try {
         await deleteObject({ key });
@@ -459,48 +489,25 @@ app.delete('/api/admin/videos/:id', requireAdminOrToken, async (req, res) => {
       }
     }
 
-    rebuildClaudeMd(remainingReviews, videos);
+    rebuildClaudeMd(listReviews(), listVideos());
 
-    res.json({ ok: true, deleted: { id: removed.id, title: removed.title }, r2Removed, r2Error, reviewsRemoved });
+    res.json({
+      ok: true,
+      deleted: { id: video.id, title: video.title },
+      r2Removed,
+      r2Error,
+      reviewsRemoved,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// One-time cleanup of legacy reviews data: enforce
-//   at most one verdict (like/dislike) per (userId, videoId)
-//   at most one comment per (userId, videoId)
-// Keeps the latest record by timestamp. Rewrites data/reviews.json in place.
-function dedupeReviewsOnDisk() {
-  const reviews = readJson(REVIEWS_PATH, []);
-  if (!Array.isArray(reviews) || reviews.length === 0) return;
-
-  reviews.sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
-  const verdictByKey = new Map();
-  const commentByKey = new Map();
-  for (const r of reviews) {
-    if (!r || !r.userId || !r.videoId || !r.verdict) continue;
-    const k = `${r.userId}|${r.videoId}`;
-    if (r.verdict === 'like' || r.verdict === 'dislike') verdictByKey.set(k, r);
-    else if (r.verdict === 'comment') commentByKey.set(k, r);
-  }
-  const cleaned = [...verdictByKey.values(), ...commentByKey.values()];
-  cleaned.sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
-
-  if (cleaned.length !== reviews.length) {
-    console.log(
-      `[startup] Deduped reviews: ${reviews.length} -> ${cleaned.length} rows.`,
-    );
-    writeJson(REVIEWS_PATH, cleaned);
-    // Also refresh CLAUDE.md so the new totals reflect the dedupe.
-    const videos = readJson(VIDEOS_PATH, []);
-    rebuildClaudeMd(cleaned, videos);
-  }
-}
-
 // ---------- startup ----------
 async function start() {
-  dedupeReviewsOnDisk();
+  // Eagerly init the DB so any startup errors surface immediately.
+  getDb();
+
   const { user, bootstrappedPassword, resynced } = await bootstrapAdmin();
   if (bootstrappedPassword) {
     console.log('\n========================================================');

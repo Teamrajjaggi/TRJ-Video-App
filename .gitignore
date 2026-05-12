@@ -19,3 +19,10 @@ prompts/subjects.local.md
 
 # drive sync state (regenerated locally)
 data/drive-sync.json
+
+# SQLite database files
+data/app.db
+data/app.db-journal
+data/app.db-wal
+data/app.db-shm
+data/.migrated-to-sqlite

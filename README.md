@@ -180,3 +180,26 @@ When liked, a video's metadata is uploaded to a folder you control:
 
 If creds are missing, the vault falls back to writing to
 `data/saved-vault/` locally so the rest of the loop still works.
+
+## Deploying to Railway
+
+The app stores everything in a single SQLite database (`data/app.db` by
+default) so deployment is one Railway service + a persistent volume.
+
+1. <https://railway.app> → **New Project** → **Deploy from GitHub repo** →
+   pick this repo and the `claude/video-review-portal-iY3m7` branch.
+2. Service → **Variables** → paste every line from your local `.env`
+   (skip the `GOOGLE_SERVICE_ACCOUNT_FILE` line — see step 4).
+3. Add a new variable: `DB_PATH=/data/app.db`.
+4. Service → **Settings** → **Volumes** → **Add Volume**, mount path
+   `/data` (where the SQLite file lives so it survives redeploys).
+5. For Google Drive: copy the whole JSON service-account file content,
+   and paste it as the `GOOGLE_SERVICE_ACCOUNT_JSON` env var instead of
+   the local `GOOGLE_SERVICE_ACCOUNT_FILE` path.
+6. For subject descriptions: set `SUBJECT_A_DESCRIPTION` /
+   `SUBJECT_B_DESCRIPTION` env vars — the composer falls back to those
+   when `prompts/subjects.local.md` is missing.
+7. Service → **Settings** → **Networking** → **Generate Domain**.
+
+Subsequent pushes auto-redeploy. The mounted volume keeps your DB across
+deploys.
