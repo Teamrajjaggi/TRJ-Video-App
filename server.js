@@ -384,7 +384,7 @@ function dedupeReviewsOnDisk() {
 // ---------- startup ----------
 async function start() {
   dedupeReviewsOnDisk();
-  const { user, bootstrappedPassword } = await bootstrapAdmin();
+  const { user, bootstrappedPassword, resynced } = await bootstrapAdmin();
   if (bootstrappedPassword) {
     console.log('\n========================================================');
     console.log('  Admin account "claude" bootstrapped.');
@@ -392,6 +392,8 @@ async function start() {
     console.log(`  password: ${bootstrappedPassword}`);
     console.log('  Save this now — it will not be printed again.');
     console.log('========================================================\n');
+  } else if (resynced) {
+    console.log('[startup] Admin password resynced from ADMIN_PASSWORD env.');
   }
   if (!process.env.INVITE_CODE) {
     console.warn(
