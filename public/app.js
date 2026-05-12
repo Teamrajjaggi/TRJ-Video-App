@@ -103,10 +103,13 @@ function buildCard(video) {
   const commentForm = node.querySelector('.comment-form');
   const closeBtn = node.querySelector('.comments .close');
 
-  if (video.myReview?.verdict === 'like') likeBtn.classList.add('is-active');
-  if (video.myReview?.verdict === 'dislike') dislikeBtn.classList.add('is-active');
+  if (video.myVerdict?.verdict === 'like') likeBtn.classList.add('is-active');
+  if (video.myVerdict?.verdict === 'dislike') dislikeBtn.classList.add('is-active');
 
   renderComments(commentList, video.reviews || []);
+  if (video.myComment?.comment) {
+    commentForm.querySelector('textarea').value = video.myComment.comment;
+  }
 
   videoEl.addEventListener('click', () => {
     if (videoEl.paused) videoEl.play().catch(() => {});
@@ -141,24 +144,51 @@ function buildCard(video) {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      video.reviews = [...(video.reviews || []), data.review];
+      applyMutation(video, verdict, data);
       updateCounts(node, video.reviews);
       renderComments(commentList, video.reviews);
-      if (verdict === 'like') {
-        likeBtn.classList.add('is-active');
-        dislikeBtn.classList.remove('is-active');
-        flagSaved(likeBtn, 'saved');
-      } else if (verdict === 'dislike') {
-        dislikeBtn.classList.add('is-active');
-        likeBtn.classList.remove('is-active');
-      }
-      commentForm.reset();
+      setVerdictButtons(likeBtn, dislikeBtn, verdict, data.action);
+      if (verdict === 'like' && data.action !== 'removed') flagSaved(likeBtn, 'saved');
     } catch (e2) {
       alert(`Failed: ${e2.message}`);
     }
   });
 
   return node;
+}
+
+function applyMutation(video, verdict, response) {
+  const all = video.reviews || [];
+  const myUserId = response.review?.userId || me?.id;
+  const isCommentKind = verdict === 'comment';
+  const filtered = all.filter((r) => {
+    if (r.userId !== myUserId) return true;
+    if (isCommentKind) return r.verdict !== 'comment';
+    return r.verdict !== 'like' && r.verdict !== 'dislike';
+  });
+  if (response.action !== 'removed' && response.review) filtered.push(response.review);
+  video.reviews = filtered;
+  if (isCommentKind) {
+    video.myComment = response.action === 'removed' ? null : response.review;
+  } else {
+    video.myVerdict = response.action === 'removed' ? null : response.review;
+  }
+}
+
+function setVerdictButtons(likeBtn, dislikeBtn, verdict, action) {
+  if (verdict === 'comment') return;
+  if (action === 'removed') {
+    likeBtn.classList.remove('is-active');
+    dislikeBtn.classList.remove('is-active');
+    return;
+  }
+  if (verdict === 'like') {
+    likeBtn.classList.add('is-active');
+    dislikeBtn.classList.remove('is-active');
+  } else {
+    dislikeBtn.classList.add('is-active');
+    likeBtn.classList.remove('is-active');
+  }
 }
 
 function updateCounts(node, reviews) {
@@ -201,18 +231,12 @@ async function submitVerdict(verdict, node, video) {
       method: 'POST',
       body: JSON.stringify({ videoId: video.id, verdict, comment: '' }),
     });
-    video.reviews = [...(video.reviews || []), data.review];
+    applyMutation(video, verdict, data);
     updateCounts(node, video.reviews);
     const likeBtn = node.querySelector('.action.like');
     const dislikeBtn = node.querySelector('.action.dislike');
-    if (verdict === 'like') {
-      likeBtn.classList.add('is-active');
-      dislikeBtn.classList.remove('is-active');
-      flagSaved(likeBtn, 'saved');
-    } else {
-      dislikeBtn.classList.add('is-active');
-      likeBtn.classList.remove('is-active');
-    }
+    setVerdictButtons(likeBtn, dislikeBtn, verdict, data.action);
+    if (verdict === 'like' && data.action !== 'removed') flagSaved(likeBtn, 'saved');
   } catch (e) {
     alert(`Failed: ${e.message}`);
   }

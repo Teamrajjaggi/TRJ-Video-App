@@ -3,23 +3,13 @@
 // Live in n8n at:
 //   https://tvtai.app.n8n.cloud/workflow/ATpRqLYDcd7H02HF
 //
-// This file is the source-of-truth for the workflow. Edit it in n8n's UI, or
-// re-import via the n8n MCP server + update_workflow tool.
-//
-// Pipeline:
-//   [Schedule Trigger (every 3h)] ─┐
-//                                   ├─→ Build 5 jobs → Loop x5 →
-//   [Manual Trigger]              ──┘     ├─ Fetch CLAUDE.md context
-//                                         ├─ Generate Draft (replace w/ Higgsfield)
-//                                         └─ Publish to /api/admin/publish
-//
-// To wire up:
-//   1. In n8n, set the "Video Review Admin" credential to Header Name
-//      `Authorization`, Value `Bearer <ADMIN_API_TOKEN>` (matches the env var
-//      on the Video Review server).
-//   2. Fill the placeholder URLs in both HTTP nodes with your app's host.
-//   3. Replace the "Generate Draft" Code node with an HTTP Request to
-//      Higgsfield. Use the fetched `context` field as part of the prompt.
+// Pipeline per cycle (every 3h or on manual trigger), 5 generations per cycle:
+//   1. Fetch Next Prompt   → GET  /api/admin/next-prompt
+//                            returns { system, user } with CLAUDE.md baked in
+//   2. Call Higgsfield     → POST <Higgsfield endpoint>
+//                            you wire the real URL + API key here
+//   3. Normalize           → adapts Higgsfield's response to /publish's shape
+//   4. Publish to Feed     → POST /api/admin/publish
 
 import {
   workflow,
@@ -38,9 +28,7 @@ const scheduleTrigger = trigger({
   version: 1.3,
   config: {
     name: 'Every 3 Hours',
-    parameters: {
-      rule: { interval: [{ field: 'hours', hoursInterval: 3 }] },
-    },
+    parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } },
     position: [240, 200],
   },
   output: [{}],
@@ -69,70 +57,72 @@ const fanOutFiveJobs = node({
   output: [{ index: 1 }, { index: 2 }, { index: 3 }, { index: 4 }, { index: 5 }],
 });
 
-const fetchContext = node({
+const fetchNextPrompt = node({
   type: 'n8n-nodes-base.httpRequest',
   version: 4.4,
   config: {
-    name: 'Fetch CLAUDE.md',
+    name: 'Fetch Next Prompt',
     parameters: {
       method: 'GET',
       url: placeholder(
-        'Your app URL + /api/admin/context (e.g. http://localhost:3000/api/admin/context)',
+        'Your app URL + /api/admin/next-prompt (e.g. http://localhost:3000/api/admin/next-prompt)',
       ),
       authentication: 'genericCredentialType',
       genericAuthType: 'httpHeaderAuth',
-      options: {
-        response: {
-          response: {
-            responseFormat: 'text',
-            outputPropertyName: 'context',
-          },
-        },
-      },
     },
     credentials: { httpHeaderAuth: newCredential('Video Review Admin') },
     position: [1140, 350],
   },
-  output: [{ context: '# CLAUDE.md ...' }],
+  output: [
+    { system: '# Video generation — system prompt ...', user: '# Generation request ...', composedAt: '2026-01-01T00:00:00.000Z' },
+  ],
 });
 
-const generateDraft = node({
+const callHiggsfield = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.4,
+  config: {
+    name: 'Call Higgsfield (REPLACE URL + AUTH)',
+    parameters: {
+      method: 'POST',
+      url: placeholder('Higgsfield generation endpoint (e.g. https://api.higgsfield.ai/v1/...)'),
+      authentication: 'genericCredentialType',
+      genericAuthType: 'httpHeaderAuth',
+      sendBody: true,
+      contentType: 'json',
+      specifyBody: 'json',
+      jsonBody: expr(
+        '{{ JSON.stringify({ prompt: $json.user, system: $json.system, params: { duration: 30, aspect_ratio: "9:16" } }) }}',
+      ),
+    },
+    credentials: { httpHeaderAuth: newCredential('Higgsfield API') },
+    position: [1440, 350],
+  },
+  output: [{ video_url: 'https://example.com/generated.mp4', thumbnail_url: 'https://example.com/generated.jpg', title: 'Generated draft', description: 'stub', tags: ['generated'] }],
+});
+
+const normalizeResponse = node({
   type: 'n8n-nodes-base.code',
   version: 2,
   config: {
-    name: 'Generate Draft (replace with Higgsfield)',
+    name: 'Normalize for /publish (ADAPT TO HIGGSFIELD RESPONSE)',
     parameters: {
       mode: 'runOnceForAllItems',
       language: 'javaScript',
       jsCode:
-        'const ctx = ($input.first().json && $input.first().json.context) || "";\n' +
-        'const sources = [\n' +
-        '  { src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4", poster: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/Sintel.jpg" },\n' +
-        '  { src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4", poster: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/TearsOfSteel.jpg" }\n' +
-        '];\n' +
-        'const pick = sources[Math.floor(Math.random() * sources.length)];\n' +
-        'const seed = Math.random().toString(36).slice(2, 7);\n' +
+        'const r = $input.first().json;\n' +
         'return [{ json: {\n' +
-        '  title: "Generated draft " + seed,\n' +
-        '  description: "Stub generation. Replace this Code node with a Higgsfield HTTP call that uses ctx as context.",\n' +
-        '  src: pick.src,\n' +
-        '  poster: pick.poster,\n' +
-        '  tags: ["generated", "draft"],\n' +
-        '  prompt: "(replace with the real prompt; CLAUDE.md context length: " + ctx.length + ")"\n' +
+        "  title: r.title || ('Generated ' + Math.random().toString(36).slice(2, 7)),\n" +
+        "  description: r.description || '',\n" +
+        '  src: r.video_url || r.src || r.url,\n' +
+        "  poster: r.thumbnail_url || r.poster || r.thumb || '',\n" +
+        "  tags: Array.isArray(r.tags) ? r.tags : ['generated'],\n" +
+        "  prompt: r.prompt || ''\n" +
         '} }];',
     },
-    position: [1440, 350],
+    position: [1740, 350],
   },
-  output: [
-    {
-      title: 'Generated draft',
-      description: 'stub',
-      src: 'https://example/video.mp4',
-      poster: 'https://example/poster.jpg',
-      tags: ['generated', 'draft'],
-      prompt: 'stub',
-    },
-  ],
+  output: [{ title: 'Generated draft', description: '', src: 'https://example.com/generated.mp4', poster: 'https://example.com/generated.jpg', tags: ['generated'], prompt: '' }],
 });
 
 const publishDraft = node({
@@ -151,18 +141,14 @@ const publishDraft = node({
       jsonBody: expr('{{ JSON.stringify($json) }}'),
     },
     credentials: { httpHeaderAuth: newCredential('Video Review Admin') },
-    position: [1740, 350],
+    position: [2040, 350],
   },
   output: [{ ok: true, video: { id: 'vid_...' } }],
 });
 
 const loopBatches = splitInBatches({
   version: 3,
-  config: {
-    name: 'Loop (5 generations)',
-    parameters: { batchSize: 1 },
-    position: [840, 350],
-  },
+  config: { name: 'Loop (5 generations)', parameters: { batchSize: 1 }, position: [840, 350] },
 });
 
 const cycleDone = node({
@@ -173,9 +159,7 @@ const cycleDone = node({
     parameters: {
       mode: 'manual',
       assignments: {
-        assignments: [
-          { id: 'status', name: 'status', value: 'cycle complete', type: 'string' },
-        ],
+        assignments: [{ id: 'status', name: 'status', value: 'cycle complete', type: 'string' }],
       },
     },
     position: [1140, 650],
@@ -185,11 +169,15 @@ const cycleDone = node({
 
 const howToNote = sticky(
   '## Generator cycle\n\n' +
-    'Every 3 hours (or on manual trigger) this workflow generates 5 video drafts and publishes them to the Video Review app.\n\n' +
-    '**To wire it up:**\n' +
-    "- Set the Video Review Admin credential to Header Name `Authorization`, Value `Bearer <your ADMIN_API_TOKEN>`.\n" +
-    "- Fill the placeholder URLs in the HTTP nodes with your app's host.\n" +
-    "- Replace the **Generate Draft** code node with an HTTP Request to Higgsfield. Use the fetched CLAUDE.md (`$json.context`) as part of the prompt.",
+    'Every 3 hours (or on manual trigger) this workflow runs 5 generations and publishes each to the Video Review app.\n\n' +
+    '**Steps:**\n' +
+    '1. **Fetch Next Prompt** — pulls the composed prompt (system + user, with live CLAUDE.md context baked in) from `/api/admin/next-prompt`.\n' +
+    '2. **Call Higgsfield** — POSTs that prompt to the video-gen API. Replace the URL and credential with your Higgsfield endpoint + API key.\n' +
+    "3. **Normalize** — adapts Higgsfield's response shape into the publish payload.\n" +
+    '4. **Publish to Feed** — POSTs the final video record to `/api/admin/publish`.\n\n' +
+    '**Credentials:**\n' +
+    '- `Video Review Admin` → Header Auth, Name=`Authorization`, Value=`Bearer <ADMIN_API_TOKEN>`.\n' +
+    '- `Higgsfield API` → Header Auth or whatever scheme Higgsfield uses for your account.',
   [scheduleTrigger, manualTrigger, fanOutFiveJobs, loopBatches],
   { color: 5 },
 );
@@ -201,7 +189,9 @@ export default workflow('video-review-generator', 'Video Review — Generator Cy
     loopBatches
       .onDone(cycleDone)
       .onEachBatch(
-        fetchContext.to(generateDraft.to(publishDraft.to(nextBatch(loopBatches)))),
+        fetchNextPrompt.to(
+          callHiggsfield.to(normalizeResponse.to(publishDraft.to(nextBatch(loopBatches)))),
+        ),
       ),
   )
   .add(manualTrigger)

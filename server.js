@@ -28,6 +28,7 @@ const {
   readLearningQueue,
 } = require('./lib/learning');
 const { publishVideo, generateOneInternal } = require('./lib/workflow');
+const { composePrompt } = require('./lib/prompt');
 
 const VIDEOS_PATH = path.join(__dirname, 'data', 'videos.json');
 const REVIEWS_PATH = path.join(__dirname, 'data', 'reviews.json');
@@ -144,14 +145,22 @@ app.get('/api/videos', requireAuth, (req, res) => {
     byVideo[r.videoId].push(r);
   }
   res.json(
-    videos.map((v) => ({
-      ...v,
-      reviews: byVideo[v.id] || [],
-      myReview: (byVideo[v.id] || []).find((r) => r.userId === req.user.id) || null,
-    })),
+    videos.map((v) => {
+      const all = byVideo[v.id] || [];
+      const mine = all.filter((r) => r.userId === req.user.id);
+      return {
+        ...v,
+        reviews: all,
+        myVerdict:
+          mine.find((r) => r.verdict === 'like' || r.verdict === 'dislike') || null,
+        myComment: mine.find((r) => r.verdict === 'comment') || null,
+      };
+    }),
   );
 });
 
+// Each user gets at most one verdict (like/dislike) and one comment per video.
+// Re-submitting upserts. Submitting the same verdict again toggles it off.
 async function handleReview(req, res, { kindOverride } = {}) {
   const { videoId, verdict: vIn, comment } = req.body || {};
   const verdict = kindOverride || vIn;
@@ -163,34 +172,84 @@ async function handleReview(req, res, { kindOverride } = {}) {
   if (!video) return res.status(404).json({ error: 'video not found' });
 
   const reviews = readJson(REVIEWS_PATH, []);
-  const review = {
-    id: `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    videoId,
-    userId: req.user.id,
-    username: req.user.username,
-    verdict,
-    comment: typeof comment === 'string' ? comment : '',
-    at: new Date().toISOString(),
-  };
-  reviews.push(review);
-  writeJson(REVIEWS_PATH, reviews);
+  const userId = req.user.id;
+  const username = req.user.username;
+  const text = typeof comment === 'string' ? comment.trim() : '';
+  const newId = () => `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-  rebuildClaudeMd(reviews, videos);
-
+  let action = 'added';
+  let review = null;
   let vault = null;
-  if (verdict === 'like') {
-    try {
-      vault = await saveLikedVideoToVault(video, review, req.user);
-    } catch (e) {
-      console.warn('[review] vault save failed:', e.message);
+
+  if (verdict === 'comment') {
+    const idx = reviews.findIndex(
+      (r) => r.userId === userId && r.videoId === videoId && r.verdict === 'comment',
+    );
+    if (!text && idx !== -1) {
+      reviews.splice(idx, 1);
+      action = 'removed';
+    } else if (!text) {
+      return res.status(400).json({ error: 'comment is empty' });
+    } else {
+      const existing = idx === -1 ? null : reviews[idx];
+      review = {
+        id: existing?.id || newId(),
+        videoId,
+        userId,
+        username,
+        verdict: 'comment',
+        comment: text,
+        at: new Date().toISOString(),
+      };
+      if (idx === -1) reviews.push(review);
+      else reviews[idx] = review;
+      action = existing ? 'updated' : 'added';
+      recordCommentForLearning(video, review, req.user);
     }
-  } else if (verdict === 'dislike') {
-    recordDislikeForLearning(video, review, req.user);
-  } else if (verdict === 'comment') {
-    recordCommentForLearning(video, review, req.user);
+  } else {
+    // like / dislike — one verdict slot per (userId, videoId)
+    const idx = reviews.findIndex(
+      (r) =>
+        r.userId === userId &&
+        r.videoId === videoId &&
+        (r.verdict === 'like' || r.verdict === 'dislike'),
+    );
+    const existing = idx === -1 ? null : reviews[idx];
+
+    if (existing && existing.verdict === verdict && !text) {
+      // toggle off
+      reviews.splice(idx, 1);
+      action = 'removed';
+    } else {
+      review = {
+        id: existing?.id || newId(),
+        videoId,
+        userId,
+        username,
+        verdict,
+        comment: text,
+        at: new Date().toISOString(),
+      };
+      if (idx === -1) reviews.push(review);
+      else reviews[idx] = review;
+      action = existing ? 'updated' : 'added';
+
+      if (verdict === 'like') {
+        try {
+          vault = await saveLikedVideoToVault(video, review, req.user);
+        } catch (e) {
+          console.warn('[review] vault save failed:', e.message);
+        }
+      } else if (verdict === 'dislike') {
+        recordDislikeForLearning(video, review, req.user);
+      }
+    }
   }
 
-  res.json({ ok: true, review, vault });
+  writeJson(REVIEWS_PATH, reviews);
+  rebuildClaudeMd(reviews, videos);
+
+  res.json({ ok: true, action, review, vault });
 }
 
 app.post('/api/review', requireAuth, (req, res) => handleReview(req, res));
@@ -210,6 +269,13 @@ app.get('/api/admin/context', requireAdminToken, (req, res) => {
 
 app.get('/api/admin/learning-queue', requireAdminToken, (req, res) => {
   res.json(readLearningQueue());
+});
+
+// Compose the prompt n8n should send to the video-gen API (Higgsfield etc.).
+// Bakes in the live CLAUDE.md context plus recent like/dislike notes.
+app.get('/api/admin/next-prompt', requireAdminToken, (req, res) => {
+  const composed = composePrompt(readClaudeMd());
+  res.json(composed);
 });
 
 app.post('/api/admin/publish', requireAdminToken, (req, res) => {
