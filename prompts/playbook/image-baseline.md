@@ -1,7 +1,11 @@
 A candid, unfiltered iPhone 15 Pro Max shot at {{LOCATION}}. Shot with a 24mm lens at f/11 so the background is fully sharp and in focus (no blur). The image is 100% clean—no text, no letters, no grain. The image is raw, clean, and digital with zero film grain, zero blur, and no filters. It looks like a high-quality snapshot taken just now.
 
+Subject A is {{SUBJECT_A_NAME}}.
+Appearance and demeanor of {{SUBJECT_A_NAME}}: {{SUBJECT_A_DESCRIPTION}}
 Keep {{SUBJECT_A_NAME}}'s facial features, bone structure, skin tone, hair, body type, physique, tattoos, scars, and overall appearance exactly the same as {{SUBJECT_A_REFERENCE}} with 100% fidelity and complete identity lock — absolutely zero changes to his face, body, or any distinguishing features.
 
+Subject B is {{SUBJECT_B_NAME}}.
+Appearance and demeanor of {{SUBJECT_B_NAME}}: {{SUBJECT_B_DESCRIPTION}}
 Keep {{SUBJECT_B_NAME}}'s facial features, bone structure, skin tone, hair, body type, physique, tattoos, and overall appearance exactly the same as {{SUBJECT_B_REFERENCE}} with 100% fidelity and complete identity lock — absolutely zero changes to his face, body, or any distinguishing features.
 
 {{CAMERA_ANGLE}}.
