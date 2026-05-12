@@ -2,48 +2,48 @@
   {
     "id": "vid_001",
     "title": "Sunrise timelapse over the coast",
-    "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+    "src": "https://media.w3.org/2010/05/sintel/trailer.mp4",
+    "poster": "https://media.w3.org/2010/05/sintel/poster.png",
     "tags": ["nature", "timelapse", "calm", "outdoors"],
     "description": "Slow timelapse of dawn on a quiet beach."
   },
   {
     "id": "vid_002",
     "title": "Street food vendor in Bangkok",
-    "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg",
+    "src": "https://media.w3.org/2010/05/bunny/trailer.mp4",
+    "poster": "https://media.w3.org/2010/05/bunny/poster.png",
     "tags": ["food", "travel", "urban", "people"],
     "description": "Pad Thai cooked over an open flame at a night market."
   },
   {
     "id": "vid_003",
     "title": "Quick pasta recipe in 60s",
-    "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg",
+    "src": "https://media.w3.org/2010/05/video/movie_300.mp4",
+    "poster": "https://media.w3.org/2010/05/video/poster.png",
     "tags": ["food", "recipe", "tutorial", "quick"],
     "description": "Carbonara walkthrough, no cream, just eggs and pecorino."
   },
   {
     "id": "vid_004",
     "title": "Mountain bike downhill run",
-    "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerEscapes.jpg",
+    "src": "https://vjs.zencdn.net/v/oceans.mp4",
+    "poster": "https://vjs.zencdn.net/v/oceans.png",
     "tags": ["sports", "outdoors", "extreme", "action"],
     "description": "Helmet-cam descent through a wooded singletrack."
   },
   {
     "id": "vid_005",
     "title": "Home office desk setup tour",
-    "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-    "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerFun.jpg",
+    "src": "https://media.w3.org/2010/05/bunny/movie.mp4",
+    "poster": "https://media.w3.org/2010/05/bunny/poster.png",
     "tags": ["tech", "productivity", "indoors", "tutorial"],
     "description": "Minimalist desk with mechanical keyboard and ultrawide monitor."
   },
   {
     "id": "vid_006",
     "title": "Golden retriever puppy first bath",
-    "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-    "poster": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerJoyrides.jpg",
+    "src": "https://media.w3.org/2010/05/sintel/trailer.mp4",
+    "poster": "https://media.w3.org/2010/05/sintel/poster.png",
     "tags": ["animals", "cute", "indoors", "wholesome"],
     "description": "Eight-week-old puppy figuring out the tub."
   }
