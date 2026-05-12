@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Probe Higgsfield for valid model paths.
+// Probe Higgsfield for valid model_id strings.
+// Higgsfield's model_id pattern is `<org>/<model>/<variant>`, per official docs.
 // Usage: node scripts/probe-higgsfield.js
 
 require('dotenv').config();
@@ -21,64 +22,69 @@ const HEADERS = {
   Accept: 'application/json',
 };
 
-// Each item: { path, body, label }
-const PROBES = [
-  // ---- Image gen: simpler nano-banana variants ----
-  { path: 'nano-banana', body: { prompt: 'ping' } },
-  { path: 'nanobanana', body: { prompt: 'ping' } },
-  { path: 'nanobanana-pro', body: { prompt: 'ping' } },
-  { path: 'nanobanana-2', body: { prompt: 'ping' } },
-  { path: 'nano_banana', body: { prompt: 'ping' } },
-  { path: 'banana', body: { prompt: 'ping' } },
-  { path: 'banana-pro', body: { prompt: 'ping' } },
-  // Nanobanana with version segments
-  { path: 'nano-banana/v1', body: { prompt: 'ping' } },
-  { path: 'nano-banana/v2', body: { prompt: 'ping' } },
-  { path: 'nano-banana/v3', body: { prompt: 'ping' } },
-  { path: 'nano-banana/pro', body: { prompt: 'ping' } },
-  // Other image gen possibilities
-  { path: 'flux', body: { prompt: 'ping' } },
-  { path: 'flux-pro', body: { prompt: 'ping' } },
-  { path: 'flux-1.1-pro', body: { prompt: 'ping' } },
-  { path: 'flux-dev', body: { prompt: 'ping' } },
-  { path: 'soul', body: { prompt: 'ping' } },
-  { path: 'higgsfield-soul', body: { prompt: 'ping' } },
-  { path: 'imagen', body: { prompt: 'ping' } },
-  { path: 'imagen-3', body: { prompt: 'ping' } },
-  // Generic
-  { path: 'text-to-image', body: { prompt: 'ping' } },
-  { path: 'v1/text-to-image', body: { prompt: 'ping' } },
+const TEXT_BODY = { prompt: 'ping', aspect_ratio: '9:16', resolution: '720p' };
+const I2V_BODY = {
+  prompt: 'ping',
+  input_image: { url: 'https://example.com/x.png' },
+  aspect_ratio: '9:16',
+};
 
-  // ---- Kling i2v: discover the right input_image shape ----
+const PROBES = [
+  // ---- Higgsfield's own models ----
+  { id: 'higgsfield-ai/soul/standard', body: TEXT_BODY },
+  { id: 'higgsfield-ai/soul/pro', body: TEXT_BODY },
+  { id: 'higgsfield-ai/soul-pro/standard', body: TEXT_BODY },
+  { id: 'higgsfield-ai/dop/standard', body: TEXT_BODY },
+  { id: 'higgsfield-ai/dop/pro', body: TEXT_BODY },
+
+  // ---- Nano Banana (Google image gen) ----
+  { id: 'higgsfield-ai/nano-banana/standard', body: TEXT_BODY },
+  { id: 'higgsfield-ai/nano-banana/pro', body: TEXT_BODY },
+  { id: 'higgsfield-ai/nano-banana-pro/standard', body: TEXT_BODY },
+  { id: 'higgsfield-ai/nano-banana-2/standard', body: TEXT_BODY },
+  { id: 'google/nano-banana/pro', body: TEXT_BODY },
+  { id: 'google/nano-banana/standard', body: TEXT_BODY },
+  { id: 'google/nano-banana-pro/standard', body: TEXT_BODY },
+  { id: 'google/nano-banana-2/standard', body: TEXT_BODY },
+
+  // ---- Seedream / Bytedance image gen ----
+  { id: 'bytedance/seedream/standard', body: TEXT_BODY },
+  { id: 'bytedance/seedream/v4', body: TEXT_BODY },
+  { id: 'bytedance/seedream/pro', body: TEXT_BODY },
+  { id: 'higgsfield-ai/seedream/v4', body: TEXT_BODY },
+
+  // ---- Flux / others ----
+  { id: 'higgsfield-ai/flux/pro', body: TEXT_BODY },
+  { id: 'higgsfield-ai/flux/dev', body: TEXT_BODY },
+  { id: 'black-forest-labs/flux/pro', body: TEXT_BODY },
+
+  // ---- Kling image-to-video (we know /kling works) ----
+  { id: 'higgsfield-ai/kling/standard', body: I2V_BODY },
+  { id: 'higgsfield-ai/kling/pro', body: I2V_BODY },
+  { id: 'higgsfield-ai/kling/turbo', body: I2V_BODY },
+  { id: 'higgsfield-ai/kling/2.5-turbo', body: I2V_BODY },
+  { id: 'higgsfield-ai/kling/v2.5-turbo', body: I2V_BODY },
+  { id: 'higgsfield-ai/kling-2.5/turbo', body: I2V_BODY },
+  { id: 'higgsfield-ai/kling-2.5-turbo/standard', body: I2V_BODY },
+  { id: 'kuaishou/kling/2.5-turbo', body: I2V_BODY },
+  { id: 'kuaishou/kling/v2.5-turbo', body: I2V_BODY },
+  { id: 'kuaishou/kling-2.5-turbo/standard', body: I2V_BODY },
+
+  // Also try variations of bare `kling` with different input_image shapes
   {
-    path: 'kling',
+    id: 'kling',
     body: { prompt: 'ping', input_image: { url: 'https://example.com/x.png' } },
-    label: 'kling { input_image: { url } }',
+    label: 'kling + input_image:{url}',
   },
   {
-    path: 'kling',
-    body: { prompt: 'ping', input_image: { image: 'https://example.com/x.png' } },
-    label: 'kling { input_image: { image } }',
-  },
-  {
-    path: 'kling',
-    body: { prompt: 'ping', input_image: { source_url: 'https://example.com/x.png' } },
-    label: 'kling { input_image: { source_url } }',
-  },
-  {
-    path: 'kling',
-    body: { prompt: 'ping', input_image: { id: 'placeholder' } },
-    label: 'kling { input_image: { id } }',
-  },
-  {
-    path: 'kling',
-    body: { prompt: 'ping', input_image: { type: 'image_url', url: 'https://example.com/x.png' } },
-    label: 'kling { input_image: { type, url } }',
+    id: 'kling',
+    body: { prompt: 'ping', input_image: { image_url: 'https://example.com/x.png' } },
+    label: 'kling + input_image:{image_url}',
   },
 ];
 
 async function probe(item) {
-  const url = `${BASE}/${item.path}`;
+  const url = `${BASE}/${item.id}`;
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -86,7 +92,7 @@ async function probe(item) {
       body: JSON.stringify(item.body),
     });
     const text = await res.text();
-    return { item, status: res.status, snippet: text.slice(0, 240).replace(/\s+/g, ' ') };
+    return { item, status: res.status, snippet: text.slice(0, 260).replace(/\s+/g, ' ') };
   } catch (e) {
     return { item, status: 'ERR', snippet: e.message.slice(0, 200) };
   }
@@ -96,7 +102,7 @@ async function probe(item) {
   console.log(`Probing ${BASE} with cred order=${credOrder}\n`);
   for (const item of PROBES) {
     const r = await probe(item);
-    const label = item.label || item.path;
-    console.log(`${String(r.status).padEnd(5)} ${label.padEnd(55)} ${r.snippet}`);
+    const label = item.label || item.id;
+    console.log(`${String(r.status).padEnd(5)} ${label.padEnd(50)} ${r.snippet}`);
   }
 })();
