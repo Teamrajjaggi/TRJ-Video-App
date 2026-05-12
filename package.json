@@ -1,0 +1,14 @@
+{
+  "name": "video-review",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Simple TikTok-style portal for reviewing videos with approval/disapproval and a learning preferences file.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

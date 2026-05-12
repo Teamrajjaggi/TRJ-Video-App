@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Video Review</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main id="feed" class="feed" aria-label="Video feed">
+      <div class="loading">Loading videos…</div>
+    </main>
+
+    <a class="prefs-link" href="/api/preferences" target="_blank" rel="noopener">preferences.md</a>
+
+    <template id="card-template">
+      <section class="card" data-video-id="">
+        <video class="video" playsinline loop preload="metadata"></video>
+
+        <div class="overlay">
+          <div class="meta">
+            <h2 class="title"></h2>
+            <p class="description"></p>
+            <div class="tags"></div>
+          </div>
+
+          <div class="actions">
+            <button class="action like" type="button" aria-label="Approve">
+              <span class="icon">▲</span>
+              <span class="count like-count">0</span>
+            </button>
+            <button class="action dislike" type="button" aria-label="Disapprove">
+              <span class="icon">▼</span>
+              <span class="count dislike-count">0</span>
+            </button>
+            <button class="action comment-toggle" type="button" aria-label="Comments">
+              <span class="icon">💬</span>
+              <span class="count comment-count">0</span>
+            </button>
+          </div>
+        </div>
+
+        <aside class="comments" hidden>
+          <header>
+            <h3>Why?</h3>
+            <button class="close" type="button" aria-label="Close comments">×</button>
+          </header>
+          <ul class="comment-list"></ul>
+          <form class="comment-form">
+            <textarea
+              name="comment"
+              rows="2"
+              maxlength="500"
+              placeholder="Leave a note on why you approved or disapproved…"
+              required
+            ></textarea>
+            <div class="form-row">
+              <label class="verdict-pick">
+                <input type="radio" name="verdict" value="comment" checked />
+                <span>just a note</span>
+              </label>
+              <label class="verdict-pick">
+                <input type="radio" name="verdict" value="like" />
+                <span>approve</span>
+              </label>
+              <label class="verdict-pick">
+                <input type="radio" name="verdict" value="dislike" />
+                <span>disapprove</span>
+              </label>
+              <button type="submit">Send</button>
+            </div>
+          </form>
+        </aside>
+      </section>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
