@@ -195,6 +195,9 @@ app.patch('/api/me', requireAuth, async (req, res) => {
 });
 
 // ---------- feed ----------
+// The master account sees only videos they haven't reviewed yet — once
+// they like (approve) or dislike (delete), the card drops from their
+// queue. Other users see the full feed. Pass ?all=1 to override.
 app.get('/api/videos', requireAuth, (req, res) => {
   const videos = listVideos();
   const reviews = listReviews();
@@ -206,20 +209,25 @@ app.get('/api/videos', requireAuth, (req, res) => {
     if (!byVideo[r.videoId]) byVideo[r.videoId] = [];
     byVideo[r.videoId].push(r);
   }
-  res.json(
-    videos.map((v) => {
-      const all = byVideo[v.id] || [];
-      const mine = all.filter((r) => r.userId === req.user.id);
-      return {
-        ...v,
-        reviews: all,
-        myVerdict:
-          mine.find((r) => r.verdict === 'like' || r.verdict === 'dislike') || null,
-        myComment: mine.find((r) => r.verdict === 'comment') || null,
-        approved: approvedIds.has(v.id),
-      };
-    }),
-  );
+  const isMaster = isMasterUsername(req.user.username);
+  const showAll = req.query.all === '1';
+
+  const enriched = videos.map((v) => {
+    const all = byVideo[v.id] || [];
+    const mine = all.filter((r) => r.userId === req.user.id);
+    return {
+      ...v,
+      reviews: all,
+      myVerdict:
+        mine.find((r) => r.verdict === 'like' || r.verdict === 'dislike') || null,
+      myComment: mine.find((r) => r.verdict === 'comment') || null,
+      approved: approvedIds.has(v.id),
+    };
+  });
+
+  const filtered =
+    isMaster && !showAll ? enriched.filter((v) => !v.myVerdict) : enriched;
+  res.json(filtered);
 });
 
 // Each user gets at most one verdict (like/dislike) and one comment per video.
@@ -501,18 +509,52 @@ app.post('/api/admin/generate-one', requireAdminOrToken, async (req, res) => {
 });
 
 // Videos the master account has approved (master-likes). Ready-to-post queue.
+// Optional ?filter=unposted (default) | posted | all
 app.get('/api/admin/approved', requireAdminOrToken, (req, res) => {
+  const filter = (req.query.filter || 'unposted').toString();
+  let where = '';
+  if (filter === 'unposted') where = 'WHERE aq.posted_at IS NULL';
+  else if (filter === 'posted') where = 'WHERE aq.posted_at IS NOT NULL';
   const rows = getDb()
     .prepare(
-      `SELECT v.*, aq.approved_at, aq.approved_by
+      `SELECT v.*, aq.approved_at, aq.approved_by, aq.posted_at, aq.posted_targets
        FROM videos v
        JOIN approval_queue aq ON v.id = aq.video_id
+       ${where}
        ORDER BY aq.approved_at DESC`,
     )
     .all();
   res.json(
-    rows.map((r) => ({ ...rowToVideo(r), approvedAt: r.approved_at, approvedBy: r.approved_by })),
+    rows.map((r) => ({
+      ...rowToVideo(r),
+      approvedAt: r.approved_at,
+      approvedBy: r.approved_by,
+      postedAt: r.posted_at,
+      postedTargets: r.posted_targets ? tryParse(r.posted_targets, []) : [],
+    })),
   );
+});
+
+// Mark an approved video as posted (called by the auto-post worker once a
+// video has actually been pushed downstream).
+app.post('/api/admin/approved/:id/posted', requireAdminOrToken, (req, res) => {
+  const videoId = req.params.id;
+  const targets = Array.isArray(req.body?.targets) ? req.body.targets : [];
+  const r = getDb()
+    .prepare(
+      `UPDATE approval_queue SET posted_at = ?, posted_targets = ? WHERE video_id = ?`,
+    )
+    .run(new Date().toISOString(), JSON.stringify(targets), videoId);
+  if (!r.changes) return res.status(404).json({ error: 'video not in approval queue' });
+  res.json({ ok: true });
+});
+
+// Remove an approved video from the queue (un-approve) without deleting it.
+app.delete('/api/admin/approved/:id', requireAdminOrToken, (req, res) => {
+  const r = getDb()
+    .prepare('DELETE FROM approval_queue WHERE video_id = ?')
+    .run(req.params.id);
+  res.json({ ok: true, removed: r.changes });
 });
 
 // Drive file ids the master has hard-banned. Drive sync skips these.

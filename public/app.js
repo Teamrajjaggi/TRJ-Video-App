@@ -23,6 +23,8 @@ async function bootstrap() {
     roleChip.hidden = false;
     generateBtn.hidden = false;
     syncDriveBtn.hidden = false;
+    const queueLink = document.getElementById('queue-link');
+    if (queueLink) queueLink.hidden = false;
   }
   if (me.isMaster) {
     masterChip.hidden = false;
