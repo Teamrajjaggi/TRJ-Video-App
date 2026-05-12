@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Probe Higgsfield to find a valid model "application" path.
-//
+// Probe Higgsfield for valid model paths.
 // Usage: node scripts/probe-higgsfield.js
 
 require('dotenv').config();
@@ -22,65 +21,88 @@ const HEADERS = {
   Accept: 'application/json',
 };
 
-// Format: "METHOD path [body]"
+// Each item: { path, body, label }
 const PROBES = [
-  // Known-working from official README — confirms our auth + format is right
-  'POST bytedance/seedream/v4/text-to-image',
-  // Discovery: POST to plural routes (we saw they exist via 405 on GET)
-  'POST models',
-  'POST applications',
-  'POST v1/models',
-  'POST v1/applications',
-  // CLI-style underscored model ids (the CLI uses `kling3_0`)
-  'POST kling3_0',
-  'POST seedance_v1',
-  'POST higgsfield-dop',
-  // Single-segment vendor paths
-  'POST kling',
-  'POST seedance',
-  'POST hailuo',
-  'POST veo',
-  'POST sora',
-  // /apps namespace
-  'POST apps/kling-3.0/text-to-video',
-  'POST apps/kling/v3.0/text-to-video',
-  // model-id with /text-to-video suffix at root
-  'POST kling-3.0/text-to-video',
-  'POST kling-3/text-to-video',
-  'POST seedance-v1/text-to-video',
-  'POST hailuo-02/text-to-video',
-  'POST veo-3/text-to-video',
-  'POST sora-2/text-to-video',
-  // platform-style: vendor/model/task
-  'POST kuaishou/kling-3.0/text-to-video',
-  'POST bytedance/seedance-v1/text-to-video',
-  'POST minimax/hailuo-02/text-to-video',
-  // No version number
-  'POST kuaishou/kling/text-to-video',
-  'POST bytedance/seedance/text-to-video',
+  // ---- Image gen (Nanobanana) ----
+  { path: 'nano-banana-pro', body: { prompt: 'ping' } },
+  { path: 'nano-banana-2', body: { prompt: 'ping' } },
+  { path: 'nano_banana_2', body: { prompt: 'ping' } },
+  { path: 'nano_banana_pro', body: { prompt: 'ping' } },
+  { path: 'google/nano-banana-pro', body: { prompt: 'ping' } },
+  { path: 'google/nano-banana-2', body: { prompt: 'ping' } },
+  { path: 'google/nano-banana-pro/text-to-image', body: { prompt: 'ping' } },
+  { path: 'google/nano-banana-2/text-to-image', body: { prompt: 'ping' } },
+  { path: 'nano-banana-pro/text-to-image', body: { prompt: 'ping' } },
+  { path: 'nano-banana-2/text-to-image', body: { prompt: 'ping' } },
+  // Seedream image gen (confirmed format in SDK README)
+  { path: 'bytedance/seedream/v4/text-to-image', body: { prompt: 'ping' } },
+  { path: 'seedream/v4/text-to-image', body: { prompt: 'ping' } },
+  { path: 'seedream', body: { prompt: 'ping' } },
+
+  // ---- Kling i2v variants (we know `kling` accepts input_image) ----
+  {
+    path: 'kling',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+    label: 'kling (with input_image)',
+  },
+  {
+    path: 'kling-2.5',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+  },
+  {
+    path: 'kling-2.5-turbo',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+  },
+  {
+    path: 'kling/v2.5',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+  },
+  {
+    path: 'kling/v2.5-turbo',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+  },
+  {
+    path: 'kling/image-to-video',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+  },
+  {
+    path: 'kuaishou/kling-2.5/image-to-video',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+  },
+  {
+    path: 'kuaishou/kling-2.5-turbo/image-to-video',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+  },
+  {
+    path: 'kling-2.5/image-to-video',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+  },
+  {
+    path: 'kling-2.5-turbo/image-to-video',
+    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+  },
 ];
 
-async function probe(spec) {
-  const [method, ...rest] = spec.split(' ');
-  const path = rest.join(' ');
-  const url = `${BASE}/${path}`;
+async function probe(item) {
+  const url = `${BASE}/${item.path}`;
   try {
     const res = await fetch(url, {
-      method,
+      method: 'POST',
       headers: HEADERS,
-      body: method === 'POST' ? JSON.stringify({ prompt: 'ping', duration: 5 }) : undefined,
+      body: JSON.stringify(item.body),
     });
     const text = await res.text();
-    return { spec, status: res.status, snippet: text.slice(0, 240).replace(/\s+/g, ' ') };
+    return { item, status: res.status, snippet: text.slice(0, 240).replace(/\s+/g, ' ') };
   } catch (e) {
-    return { spec, status: 'ERR', snippet: e.message.slice(0, 200) };
+    return { item, status: 'ERR', snippet: e.message.slice(0, 200) };
   }
 }
 
 (async () => {
   console.log(`Probing ${BASE} with cred order=${credOrder}\n`);
-  for (const spec of PROBES) {
-    const r = await probe(spec);
-    console.log(`${String(r.status).padEnd(5)} ${spec.padEnd(50)} ${r.snippet}`);
+  for (const item of PROBES) {
+    const r = await probe(item);
+    const label = item.label || item.path;
+    console.log(`${String(r.status).padEnd(5)} ${label.padEnd(50)} ${r.snippet}`);
   }
 })();
