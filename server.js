@@ -29,12 +29,22 @@ const {
 } = require('./lib/learning');
 const { publishVideo, generateOneInternal } = require('./lib/workflow');
 const { composePrompt } = require('./lib/prompt');
+const {
+  pickPlan,
+  composeImagePrompt,
+  composeMotionPrompt,
+  titleFor,
+  tagsFor,
+  descriptionFor,
+} = require('./lib/playbook');
+const { putObject, r2Configured, publicUrlFor } = require('./lib/r2');
 
 const VIDEOS_PATH = path.join(__dirname, 'data', 'videos.json');
 const REVIEWS_PATH = path.join(__dirname, 'data', 'reviews.json');
 
 const app = express();
-app.use(express.json({ limit: '256kb' }));
+// 25 MB is enough for a base64-encoded image (~18MB raw).
+app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
 
 function readJson(p, fallback) {
@@ -335,6 +345,64 @@ app.post('/api/admin/publish', requireAdminToken, (req, res) => {
     res.json({ ok: true, video });
   } catch (e) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+// ---------- n8n-orchestrated pipeline endpoints ----------
+// These let n8n own the orchestration while keeping playbook composition,
+// R2 staging, and publish on the server (where the secrets and templates
+// already live).
+
+// Pick a fresh plan and return everything n8n needs to run one generation.
+app.get('/api/admin/plan', requireAdminToken, (req, res) => {
+  const plan = pickPlan();
+  const imagePrompt = composeImagePrompt(plan);
+  const motionPrompt = composeMotionPrompt(plan);
+  const referenceUrls = [
+    process.env.SUBJECT_A_REFERENCE,
+    process.env.SUBJECT_B_REFERENCE,
+  ].filter(Boolean);
+
+  res.json({
+    plan,
+    imagePrompt,
+    motionPrompt,
+    title: titleFor(plan),
+    description: descriptionFor(plan),
+    tags: tagsFor(plan),
+    referenceUrls,
+  });
+});
+
+// Accept a base64-encoded image, push it to R2 staging, return the public URL.
+// n8n hands the Gemini-generated image to this endpoint so DoP can fetch it.
+app.post('/api/admin/stage-image', requireAdminToken, async (req, res) => {
+  try {
+    const { data, mimeType } = req.body || {};
+    if (!data || typeof data !== 'string') {
+      return res.status(400).json({ error: 'body.data (base64 string) required' });
+    }
+    if (!r2Configured()) {
+      return res.status(503).json({ error: 'R2 not configured' });
+    }
+    const ext = (mimeType || '').includes('png')
+      ? 'png'
+      : (mimeType || '').includes('webp')
+        ? 'webp'
+        : 'jpg';
+    const key = `staging/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+    const buf = Buffer.from(data, 'base64');
+    const result = await putObject({
+      key,
+      body: buf,
+      contentType: mimeType || 'image/png',
+    });
+    if (!result?.url) {
+      return res.status(503).json({ error: 'staging upload failed (R2_PUBLIC_BASE_URL not set?)' });
+    }
+    res.json({ ok: true, key: result.key, url: result.url });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
