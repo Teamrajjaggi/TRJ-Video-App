@@ -1,0 +1,134 @@
+{
+  "locations": [
+    "UFC octagon",
+    "Boxing ring (HBO/Showtime PPV vibe)",
+    "Street fight in a parking lot",
+    "On top of a car hood",
+    "Backyard / driveway",
+    "Gas station",
+    "Nightclub parking lot",
+    "Hood / urban street corner",
+    "Beach",
+    "Rooftop",
+    "Gym",
+    "Las Vegas Strip sidewalk",
+    "Outside a restaurant",
+    "Mansion driveway with Lamborghinis around",
+    "Construction site",
+    "Subway platform",
+    "Inside an elevator",
+    "Vegas casino floor",
+    "Barbershop",
+    "Poker room"
+  ],
+  "reasons": [
+    "Pre-fight weigh-in turns physical",
+    "Argument over money / a debt",
+    "Disrespect at a press conference",
+    "Bumped into each other at a club",
+    "Argument over a parking spot",
+    "Beef from social media",
+    "Random street confrontation",
+    "Argument at a restaurant",
+    "Old rivalry finally settled",
+    "Argument at a barbershop",
+    "Gas station confrontation",
+    "Disagreement at a sports game",
+    "Insult at a poker table",
+    "Argument over who's the better fighter",
+    "Argument over money owed from a bet"
+  ],
+  "outfits": [
+    "Classic boxing trunks and gloves",
+    "UFC fight shorts, no shirt",
+    "Street clothes (hoodie, jeans, sneakers)",
+    "All-black tactical / streetwear",
+    "Designer fits (Gucci, Louis Vuitton, Balenciaga)",
+    "Suit and tie (formal event gone wrong)",
+    "Tank top and shorts",
+    "Workout gear",
+    "Tracksuits",
+    "Leather jacket and jeans",
+    "White tee and chains",
+    "All-white outfit (party / club)",
+    "Robes / boxing entrance gear",
+    "Vintage 90s hip hop fits"
+  ],
+  "clipTypes": [
+    {
+      "id": "establishing",
+      "label": "Establishing location shot",
+      "action": "Wide shot of the empty location, no fighters in frame yet, setting the scene.",
+      "klingMotion": "Subtle ambient motion in the scene only. No subjects yet."
+    },
+    {
+      "id": "faceoff",
+      "label": "Faceoff / staredown",
+      "action": "Subject A and Subject B stand face to face, inches apart, locked in a heated staredown. Both confident, both holding their ground. No physical contact yet.",
+      "klingMotion": "Subject A and Subject B stare each other down, mouths moving, intense expressions. No punches."
+    },
+    {
+      "id": "trash-talk",
+      "label": "Trash talk / yelling",
+      "action": "Subject A and Subject B face to face, yelling and pointing fingers. Both confident, both holding their ground.",
+      "klingMotion": "Subject A and Subject B yell at each other in English, mouths moving aggressively, pointing fingers, both confident. No punches."
+    },
+    {
+      "id": "walkup-a",
+      "label": "Subject A approaches",
+      "action": "Subject A walks toward the location with intensity and confidence. Subject B is not yet in frame.",
+      "klingMotion": "Subject A walks forward toward the camera with intensity and confidence. Camera locked."
+    },
+    {
+      "id": "walkup-b",
+      "label": "Subject B approaches",
+      "action": "Subject B walks toward the location with intensity and confidence. Subject A is not yet in frame.",
+      "klingMotion": "Subject B walks forward toward the camera with intensity and confidence. Camera locked."
+    },
+    {
+      "id": "mid-fight",
+      "label": "Mid-fight exchange",
+      "action": "Subject A and Subject B mid-fight, exchanging punches, both fighting hard, both strong.",
+      "klingMotion": "Subject A and Subject B throw punches at each other. A few sharp exchanges, both fighting hard."
+    },
+    {
+      "id": "knockout-a",
+      "label": "Knockout — Subject A wins",
+      "action": "The moment Subject A connects a clean punch. Subject B is just starting to fall, caught with a great shot.",
+      "klingMotion": "Subject B throws one punch. Subject A slips it. Subject A throws one knockout punch. Subject B drops to the ground tough — caught with a great shot. Subject A stands still, calm and confident."
+    },
+    {
+      "id": "knockout-b",
+      "label": "Knockout — Subject B wins",
+      "action": "The moment Subject B connects a clean punch. Subject A is just starting to fall, caught with a great shot.",
+      "klingMotion": "Subject A throws one punch. Subject B slips it. Subject B throws one knockout punch. Subject A drops to the ground tough — caught with a great shot. Subject B stands still, calm and confident."
+    },
+    {
+      "id": "victory-a",
+      "label": "Victory — Subject A stands tall",
+      "action": "Subject A stands tall and confident. Subject B is on the ground, tough but knocked out.",
+      "klingMotion": "Subject A stands tall and confident. Subject B is on the ground, tough but knocked out. Slight motion only."
+    },
+    {
+      "id": "victory-b",
+      "label": "Victory — Subject B stands tall",
+      "action": "Subject B stands tall and confident. Subject A is on the ground, tough but knocked out.",
+      "klingMotion": "Subject B stands tall and confident. Subject A is on the ground, tough but knocked out. Slight motion only."
+    }
+  ],
+  "cameraAngles": [
+    "Eye-level, straight-on camera perspective from approximately 8 feet away, positioned at chest height",
+    "Low-angle perspective from below at chest height",
+    "Side angle perspective at 45 degrees from approximately 10 feet away",
+    "Slightly elevated angle from approximately 12 feet away, head height",
+    "Tight medium shot, eye-level, approximately 6 feet away"
+  ],
+  "musicVibes": [
+    "Hard drill / trap",
+    "Cinematic orchestral build into hype hip hop",
+    "Upbeat rap with heavy bass",
+    "Slow tension build into hard drop",
+    "Old-school 90s boom-bap",
+    "Dramatic strings + 808s"
+  ]
+}
