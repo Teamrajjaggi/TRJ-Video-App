@@ -37,7 +37,7 @@ const {
   tagsFor,
   descriptionFor,
 } = require('./lib/playbook');
-const { putObject, r2Configured, publicUrlFor } = require('./lib/r2');
+const { putObject, deleteObject, r2KeyForUrl, r2Configured, publicUrlFor } = require('./lib/r2');
 const { syncFromDrive } = require('./lib/drive-sync');
 
 const VIDEOS_PATH = path.join(__dirname, 'data', 'videos.json');
@@ -424,6 +424,44 @@ app.post('/api/admin/sync-drive', requireAdminOrToken, async (req, res) => {
   try {
     const result = await syncFromDrive();
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin can delete any video for any reason. Removes the video, drops every
+// review/comment tied to it, and (when the source URL is in R2) deletes the
+// underlying file from the bucket too.
+app.delete('/api/admin/videos/:id', requireAdminOrToken, async (req, res) => {
+  try {
+    const videoId = req.params.id;
+    const videos = readJson(VIDEOS_PATH, []);
+    const idx = videos.findIndex((v) => v.id === videoId);
+    if (idx === -1) return res.status(404).json({ error: 'video not found' });
+    const removed = videos.splice(idx, 1)[0];
+    writeJson(VIDEOS_PATH, videos);
+
+    const reviews = readJson(REVIEWS_PATH, []);
+    const remainingReviews = reviews.filter((r) => r.videoId !== videoId);
+    const reviewsRemoved = reviews.length - remainingReviews.length;
+    writeJson(REVIEWS_PATH, remainingReviews);
+
+    let r2Removed = false;
+    let r2Error = null;
+    const key = r2KeyForUrl(removed.src);
+    if (key && r2Configured()) {
+      try {
+        await deleteObject({ key });
+        r2Removed = true;
+      } catch (e) {
+        r2Error = e.message;
+        console.warn('[delete] R2 cleanup failed:', e.message);
+      }
+    }
+
+    rebuildClaudeMd(remainingReviews, videos);
+
+    res.json({ ok: true, deleted: { id: removed.id, title: removed.title }, r2Removed, r2Error, reviewsRemoved });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

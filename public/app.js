@@ -123,10 +123,16 @@ function buildCard(video) {
   const likeBtn = node.querySelector('.action.like');
   const dislikeBtn = node.querySelector('.action.dislike');
   const commentBtn = node.querySelector('.action.comment-toggle');
+  const deleteBtn = node.querySelector('.action.delete');
   const commentsPanel = node.querySelector('.comments');
   const commentList = node.querySelector('.comment-list');
   const commentForm = node.querySelector('.comment-form');
   const closeBtn = node.querySelector('.comments .close');
+
+  if (me?.role === 'admin') {
+    deleteBtn.hidden = false;
+    deleteBtn.addEventListener('click', () => deleteVideo(node, video));
+  }
 
   if (video.myVerdict?.verdict === 'like') likeBtn.classList.add('is-active');
   if (video.myVerdict?.verdict === 'dislike') dislikeBtn.classList.add('is-active');
@@ -271,6 +277,17 @@ function flagSaved(btn, label) {
   btn.classList.add('queued');
   btn.dataset.flag = label;
   setTimeout(() => btn.classList.remove('queued'), 1800);
+}
+
+async function deleteVideo(node, video) {
+  if (!confirm(`Delete "${video.title}"? This removes the video, all reviews on it, and the file from R2.`)) return;
+  try {
+    const r = await jsonFetch(`/api/admin/videos/${encodeURIComponent(video.id)}`, { method: 'DELETE' });
+    node.remove();
+    console.log('[delete]', r);
+  } catch (e) {
+    alert(`Delete failed: ${e.message}`);
+  }
 }
 
 function observeCards() {
