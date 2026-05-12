@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Probe Higgsfield for valid model_id strings.
-// Higgsfield's model_id pattern is `<org>/<model>/<variant>`, per official docs.
+// Probe Higgsfield specifically for Nano Banana / Gemini / Imagen image models.
 // Usage: node scripts/probe-higgsfield.js
 
 require('dotenv').config();
@@ -22,87 +21,53 @@ const HEADERS = {
   Accept: 'application/json',
 };
 
-const TEXT_BODY = { prompt: 'ping', aspect_ratio: '9:16', resolution: '720p' };
-const I2V_BODY = {
-  prompt: 'ping',
-  input_image: { url: 'https://example.com/x.png' },
-  aspect_ratio: '9:16',
-};
+const BODY = { prompt: 'ping', aspect_ratio: '9:16', resolution: '720p' };
 
-const PROBES = [
-  // ---- Higgsfield's own models ----
-  { id: 'higgsfield-ai/soul/standard', body: TEXT_BODY },
-  { id: 'higgsfield-ai/soul/pro', body: TEXT_BODY },
-  { id: 'higgsfield-ai/soul-pro/standard', body: TEXT_BODY },
-  { id: 'higgsfield-ai/dop/standard', body: TEXT_BODY },
-  { id: 'higgsfield-ai/dop/pro', body: TEXT_BODY },
-
-  // ---- Nano Banana (Google image gen) ----
-  { id: 'higgsfield-ai/nano-banana/standard', body: TEXT_BODY },
-  { id: 'higgsfield-ai/nano-banana/pro', body: TEXT_BODY },
-  { id: 'higgsfield-ai/nano-banana-pro/standard', body: TEXT_BODY },
-  { id: 'higgsfield-ai/nano-banana-2/standard', body: TEXT_BODY },
-  { id: 'google/nano-banana/pro', body: TEXT_BODY },
-  { id: 'google/nano-banana/standard', body: TEXT_BODY },
-  { id: 'google/nano-banana-pro/standard', body: TEXT_BODY },
-  { id: 'google/nano-banana-2/standard', body: TEXT_BODY },
-
-  // ---- Seedream / Bytedance image gen ----
-  { id: 'bytedance/seedream/standard', body: TEXT_BODY },
-  { id: 'bytedance/seedream/v4', body: TEXT_BODY },
-  { id: 'bytedance/seedream/pro', body: TEXT_BODY },
-  { id: 'higgsfield-ai/seedream/v4', body: TEXT_BODY },
-
-  // ---- Flux / others ----
-  { id: 'higgsfield-ai/flux/pro', body: TEXT_BODY },
-  { id: 'higgsfield-ai/flux/dev', body: TEXT_BODY },
-  { id: 'black-forest-labs/flux/pro', body: TEXT_BODY },
-
-  // ---- Kling image-to-video (we know /kling works) ----
-  { id: 'higgsfield-ai/kling/standard', body: I2V_BODY },
-  { id: 'higgsfield-ai/kling/pro', body: I2V_BODY },
-  { id: 'higgsfield-ai/kling/turbo', body: I2V_BODY },
-  { id: 'higgsfield-ai/kling/2.5-turbo', body: I2V_BODY },
-  { id: 'higgsfield-ai/kling/v2.5-turbo', body: I2V_BODY },
-  { id: 'higgsfield-ai/kling-2.5/turbo', body: I2V_BODY },
-  { id: 'higgsfield-ai/kling-2.5-turbo/standard', body: I2V_BODY },
-  { id: 'kuaishou/kling/2.5-turbo', body: I2V_BODY },
-  { id: 'kuaishou/kling/v2.5-turbo', body: I2V_BODY },
-  { id: 'kuaishou/kling-2.5-turbo/standard', body: I2V_BODY },
-
-  // Also try variations of bare `kling` with different input_image shapes
-  {
-    id: 'kling',
-    body: { prompt: 'ping', input_image: { url: 'https://example.com/x.png' } },
-    label: 'kling + input_image:{url}',
-  },
-  {
-    id: 'kling',
-    body: { prompt: 'ping', input_image: { image_url: 'https://example.com/x.png' } },
-    label: 'kling + input_image:{image_url}',
-  },
+const IDS = [
+  // Nano Banana via Google org (new spellings)
+  'google/nano-banana/standard',
+  'google/nano-banana/pro',
+  'google/nano-banana-pro/standard',
+  'google/nano-banana-1/standard',
+  'google/nano-banana-2/standard',
+  'google/nano-banana-3/standard',
+  // Nano Banana under higgsfield-ai
+  'higgsfield-ai/nano-banana/standard',
+  'higgsfield-ai/nano-banana/pro',
+  'higgsfield-ai/nano-banana-pro/standard',
+  // Gemini direct
+  'google/gemini/flash-image',
+  'google/gemini-flash-image/standard',
+  'google/gemini-2.5-flash-image/standard',
+  'google/gemini-image/standard',
+  // Imagen
+  'google/imagen/standard',
+  'google/imagen-3/standard',
+  'google/imagen-3.0/standard',
+  'google/imagen/pro',
+  'higgsfield-ai/imagen-3/standard',
+  // No-org single segment
+  'nano-banana',
+  'nano-banana-pro',
+  'imagen-3',
+  'gemini-flash-image',
 ];
 
-async function probe(item) {
-  const url = `${BASE}/${item.id}`;
+async function probe(id) {
+  const url = `${BASE}/${id}`;
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: HEADERS,
-      body: JSON.stringify(item.body),
-    });
+    const res = await fetch(url, { method: 'POST', headers: HEADERS, body: JSON.stringify(BODY) });
     const text = await res.text();
-    return { item, status: res.status, snippet: text.slice(0, 260).replace(/\s+/g, ' ') };
+    return { id, status: res.status, snippet: text.slice(0, 220).replace(/\s+/g, ' ') };
   } catch (e) {
-    return { item, status: 'ERR', snippet: e.message.slice(0, 200) };
+    return { id, status: 'ERR', snippet: e.message.slice(0, 200) };
   }
 }
 
 (async () => {
-  console.log(`Probing ${BASE} with cred order=${credOrder}\n`);
-  for (const item of PROBES) {
-    const r = await probe(item);
-    const label = item.label || item.id;
-    console.log(`${String(r.status).padEnd(5)} ${label.padEnd(50)} ${r.snippet}`);
+  console.log(`Probing ${BASE} for Nano Banana / Gemini / Imagen\n`);
+  for (const id of IDS) {
+    const r = await probe(id);
+    console.log(`${String(r.status).padEnd(5)} ${id.padEnd(50)} ${r.snippet}`);
   }
 })();
