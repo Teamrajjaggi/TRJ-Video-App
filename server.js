@@ -503,6 +503,41 @@ app.delete('/api/admin/videos/:id', requireAdminOrToken, async (req, res) => {
   }
 });
 
+// Auto-sync Drive on boot + on an interval so the admin doesn't have to
+// click the button every time. Off if DRIVE_SYNC_INTERVAL_MINUTES=0.
+let driveSyncInflight = false;
+async function autoSyncDrive(reason) {
+  if (driveSyncInflight) return;
+  driveSyncInflight = true;
+  try {
+    const result = await syncFromDrive();
+    if (result.ok) {
+      console.log(
+        `[drive-sync] ${reason}: ${result.added} new / ${result.skipped} already in feed / ${result.errors} errors`,
+      );
+    } else if (result.error) {
+      console.warn(`[drive-sync] ${reason}: skipped — ${result.error}`);
+    }
+  } catch (e) {
+    console.warn(`[drive-sync] ${reason}: failed`, e.message);
+  } finally {
+    driveSyncInflight = false;
+  }
+}
+
+function scheduleDriveSync() {
+  const minutes = parseInt(process.env.DRIVE_SYNC_INTERVAL_MINUTES ?? '15', 10);
+  if (!minutes || minutes < 1) {
+    console.log('[drive-sync] auto-sync disabled (DRIVE_SYNC_INTERVAL_MINUTES=0)');
+    return;
+  }
+  // Kick off once on boot (don't block startup).
+  setTimeout(() => autoSyncDrive('boot sync'), 2000);
+  // Then run on the configured interval.
+  setInterval(() => autoSyncDrive('scheduled'), minutes * 60 * 1000);
+  console.log(`[drive-sync] auto-syncing every ${minutes} min`);
+}
+
 // ---------- startup ----------
 async function start() {
   // Eagerly init the DB so any startup errors surface immediately.
@@ -528,6 +563,7 @@ async function start() {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Video review portal running on http://localhost:${PORT}`);
+    scheduleDriveSync();
   });
 }
 
