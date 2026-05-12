@@ -274,8 +274,43 @@ app.post('/api/comment', requireAuth, (req, res) =>
 );
 
 // ---------- exposed CLAUDE.md ----------
+// Wrapped in an HTML page with a back link so it doesn't look like a
+// no-escape raw-markdown dead end.
 app.get('/api/preferences', requireAuth, (req, res) => {
-  res.type('text/markdown').send(readClaudeMd());
+  const md = readClaudeMd();
+  const escaped = md
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  res.type('html').send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CLAUDE.md · Video Review</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #000; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    header { display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
+      position: sticky; top: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
+    header a { color: #fff; text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 999px; font-size: 0.85rem; }
+    header a:hover { background: rgba(255,255,255,0.08); }
+    header h1 { margin: 0; font-size: 1rem; color: rgba(255,255,255,0.7); font-weight: 500; }
+    pre { margin: 0; padding: 24px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.85rem; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/">← back to feed</a>
+    <h1>CLAUDE.md (auto-generated from reviews)</h1>
+  </header>
+  <pre>${escaped}</pre>
+</body>
+</html>`);
 });
 
 // ---------- admin / machine API (Bearer token) ----------
@@ -315,8 +350,40 @@ app.post('/api/admin/generate-one', requireAdminOrToken, async (req, res) => {
   }
 });
 
+// One-time cleanup of legacy reviews data: enforce
+//   at most one verdict (like/dislike) per (userId, videoId)
+//   at most one comment per (userId, videoId)
+// Keeps the latest record by timestamp. Rewrites data/reviews.json in place.
+function dedupeReviewsOnDisk() {
+  const reviews = readJson(REVIEWS_PATH, []);
+  if (!Array.isArray(reviews) || reviews.length === 0) return;
+
+  reviews.sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
+  const verdictByKey = new Map();
+  const commentByKey = new Map();
+  for (const r of reviews) {
+    if (!r || !r.userId || !r.videoId || !r.verdict) continue;
+    const k = `${r.userId}|${r.videoId}`;
+    if (r.verdict === 'like' || r.verdict === 'dislike') verdictByKey.set(k, r);
+    else if (r.verdict === 'comment') commentByKey.set(k, r);
+  }
+  const cleaned = [...verdictByKey.values(), ...commentByKey.values()];
+  cleaned.sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
+
+  if (cleaned.length !== reviews.length) {
+    console.log(
+      `[startup] Deduped reviews: ${reviews.length} -> ${cleaned.length} rows.`,
+    );
+    writeJson(REVIEWS_PATH, cleaned);
+    // Also refresh CLAUDE.md so the new totals reflect the dedupe.
+    const videos = readJson(VIDEOS_PATH, []);
+    rebuildClaudeMd(cleaned, videos);
+  }
+}
+
 // ---------- startup ----------
 async function start() {
+  dedupeReviewsOnDisk();
   const { user, bootstrappedPassword } = await bootstrapAdmin();
   if (bootstrappedPassword) {
     console.log('\n========================================================');
