@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign in · Video Review</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-card">
+      <h1>Sign in</h1>
+      <p class="muted">Reviewer access only. Only Claude posts.</p>
+      <form id="login-form">
+        <label>
+          <span>Username</span>
+          <input name="username" autocomplete="username" required minlength="3" />
+        </label>
+        <label>
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit">Sign in</button>
+        <p class="error" id="error" role="alert"></p>
+      </form>
+      <p class="auth-switch">
+        New here? <a href="/signup.html">Create an account</a>
+      </p>
+    </main>
+    <script type="module">
+      import { jsonFetch, showError } from '/auth.js';
+      const form = document.getElementById('login-form');
+      const err = document.getElementById('error');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showError(err, '');
+        const fd = new FormData(form);
+        try {
+          await jsonFetch('/api/login', {
+            method: 'POST',
+            body: JSON.stringify({
+              username: fd.get('username'),
+              password: fd.get('password'),
+            }),
+          });
+          window.location.href = '/';
+        } catch (e2) {
+          showError(err, e2.message);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -7,11 +7,22 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <header class="topbar">
+      <div class="who">
+        <span id="username" class="username">…</span>
+        <span id="role-chip" class="role-chip" hidden></span>
+      </div>
+      <nav class="top-actions">
+        <button id="generate-btn" class="ghost" hidden>+ Generate</button>
+        <a class="ghost" href="/api/preferences" target="_blank" rel="noopener">CLAUDE.md</a>
+        <a class="ghost" href="/profile.html">Profile</a>
+        <button id="logout-btn" class="ghost">Log out</button>
+      </nav>
+    </header>
+
     <main id="feed" class="feed" aria-label="Video feed">
       <div class="loading">Loading videos…</div>
     </main>
-
-    <a class="prefs-link" href="/api/preferences" target="_blank" rel="noopener">preferences.md</a>
 
     <template id="card-template">
       <section class="card" data-video-id="">

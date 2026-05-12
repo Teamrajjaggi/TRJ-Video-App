@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Create account · Video Review</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-card">
+      <h1>Create account</h1>
+      <p class="muted">You'll only be able to review videos — not post.</p>
+      <form id="signup-form">
+        <label>
+          <span>Invite code</span>
+          <input name="inviteCode" required autocomplete="off" />
+        </label>
+        <label>
+          <span>Username</span>
+          <input name="username" autocomplete="username" required minlength="3" maxlength="32" pattern="[a-zA-Z0-9_.\-]{3,32}" />
+        </label>
+        <label>
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="new-password" required minlength="8" />
+        </label>
+        <button type="submit">Create account</button>
+        <p class="error" id="error" role="alert"></p>
+      </form>
+      <p class="auth-switch">
+        Already have an account? <a href="/login.html">Sign in</a>
+      </p>
+    </main>
+    <script type="module">
+      import { jsonFetch, showError } from '/auth.js';
+      const form = document.getElementById('signup-form');
+      const err = document.getElementById('error');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showError(err, '');
+        const fd = new FormData(form);
+        try {
+          await jsonFetch('/api/signup', {
+            method: 'POST',
+            body: JSON.stringify({
+              username: fd.get('username'),
+              password: fd.get('password'),
+              inviteCode: fd.get('inviteCode'),
+            }),
+          });
+          window.location.href = '/';
+        } catch (e2) {
+          showError(err, e2.message);
+        }
+      });
+    </script>
+  </body>
+</html>

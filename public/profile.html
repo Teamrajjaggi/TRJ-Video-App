@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profile · Video Review</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-card">
+      <h1>Profile</h1>
+      <p class="muted">You can change your username. Everything else is locked.</p>
+      <dl class="profile-readonly">
+        <dt>Role</dt>
+        <dd id="role">—</dd>
+        <dt>Member since</dt>
+        <dd id="createdAt">—</dd>
+      </dl>
+      <form id="profile-form">
+        <label>
+          <span>Username</span>
+          <input name="username" required minlength="3" maxlength="32" pattern="[a-zA-Z0-9_.\-]{3,32}" />
+        </label>
+        <div class="form-row">
+          <button type="submit">Save</button>
+          <button type="button" id="logout">Log out</button>
+          <a class="link-back" href="/">Back to feed</a>
+        </div>
+        <p class="error" id="error" role="alert"></p>
+        <p class="success" id="success" role="status"></p>
+      </form>
+    </main>
+    <script type="module">
+      import { jsonFetch, getMe, showError } from '/auth.js';
+      const form = document.getElementById('profile-form');
+      const err = document.getElementById('error');
+      const ok = document.getElementById('success');
+
+      const me = await getMe();
+      if (!me) {
+        window.location.href = '/login.html';
+      } else {
+        form.username.value = me.username;
+        document.getElementById('role').textContent = me.role;
+        document.getElementById('createdAt').textContent = new Date(me.createdAt).toLocaleString();
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showError(err, '');
+        ok.textContent = '';
+        try {
+          const data = await jsonFetch('/api/me', {
+            method: 'PATCH',
+            body: JSON.stringify({ username: form.username.value }),
+          });
+          ok.textContent = `Saved. You are now ${data.user.username}.`;
+        } catch (e2) {
+          showError(err, e2.message);
+        }
+      });
+
+      document.getElementById('logout').addEventListener('click', async () => {
+        await jsonFetch('/api/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+      });
+    </script>
+  </body>
+</html>
