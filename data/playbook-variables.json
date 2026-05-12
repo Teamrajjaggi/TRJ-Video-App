@@ -5,21 +5,39 @@
     "Street fight in a parking lot",
     "On top of a car hood",
     "Backyard / driveway",
-    "Gas station",
+    "Gas station at night",
     "Nightclub parking lot",
     "Hood / urban street corner",
-    "Beach",
-    "Rooftop",
-    "Gym",
-    "Las Vegas Strip sidewalk",
-    "Outside a restaurant",
+    "Beach at sunset",
+    "Rooftop overlooking the city skyline",
+    "Boxing gym with heavy bags in the background",
+    "Las Vegas Strip sidewalk at night",
+    "Outside a fancy restaurant under valet lights",
     "Mansion driveway with Lamborghinis around",
-    "Construction site",
-    "Subway platform",
-    "Inside an elevator",
+    "Construction site, daylight, raw concrete",
+    "Subway platform with a train in the background",
+    "Inside an elevator with mirrored walls",
     "Vegas casino floor",
-    "Barbershop",
-    "Poker room"
+    "Barbershop with red leather chairs",
+    "High-stakes poker room",
+    "Courtside at an NBA game",
+    "Behind the scenes at a press conference, microphones in frame",
+    "Sneaker store, walls of boxes behind them",
+    "Rolex / luxury watch boutique",
+    "Backstage hallway at a stadium",
+    "Pre-fight weigh-in stage with scale",
+    "Locker room",
+    "Strip club VIP booth",
+    "Yacht deck at sea",
+    "Private jet cabin",
+    "Tattoo parlor",
+    "Mexican taco truck at night",
+    "Mall food court",
+    "Lambo dealership showroom",
+    "Penthouse balcony at night with city lights",
+    "Bodega / corner store",
+    "Diner booth",
+    "Hotel suite hallway, golden lighting"
   ],
   "reasons": [
     "Pre-fight weigh-in turns physical",
@@ -29,106 +47,162 @@
     "Argument over a parking spot",
     "Beef from social media",
     "Random street confrontation",
-    "Argument at a restaurant",
+    "Argument at a restaurant over a reservation",
     "Old rivalry finally settled",
-    "Argument at a barbershop",
-    "Gas station confrontation",
-    "Disagreement at a sports game",
+    "Argument at a barbershop over who's next",
+    "Gas station confrontation over a pump",
+    "Disagreement at a sports game over a call",
     "Insult at a poker table",
     "Argument over who's the better fighter",
-    "Argument over money owed from a bet"
+    "Argument over money owed from a bet",
+    "Caught talking trash on a podcast that aired today",
+    "Disagreement over who has the better watch",
+    "Fight over the same girl at a club",
+    "Argument over which one has more knockouts",
+    "Tension boiling over after a staredown went too long",
+    "Argument over a missed business deal",
+    "Disrespect over a designer fit",
+    "Fight broke out after a champagne bottle got slammed down",
+    "Argument over a trash-talk video posted earlier today",
+    "Argument over who paid for what",
+    "Fight over who's the GOAT — boxing vs the cross-discipline crowd",
+    "Beef from a charity event",
+    "Argument that started at a tattoo parlor and spilled outside"
   ],
   "outfits": [
     "Classic boxing trunks and gloves",
     "UFC fight shorts, no shirt",
-    "Street clothes (hoodie, jeans, sneakers)",
-    "All-black tactical / streetwear",
-    "Designer fits (Gucci, Louis Vuitton, Balenciaga)",
-    "Suit and tie (formal event gone wrong)",
-    "Tank top and shorts",
-    "Workout gear",
-    "Tracksuits",
-    "Leather jacket and jeans",
-    "White tee and chains",
-    "All-white outfit (party / club)",
-    "Robes / boxing entrance gear",
-    "Vintage 90s hip hop fits"
+    "Hoodie, jeans, sneakers",
+    "All-black tactical streetwear",
+    "Designer fits (Louis Vuitton head to toe, statement chains)",
+    "Suit and tie, formal event gone wrong",
+    "Tank top and shorts, gym sweat",
+    "Tracksuit, fresh white sneakers",
+    "Leather jacket and dark jeans",
+    "White tee, gold chains, baggy jeans",
+    "All-white club fit",
+    "Boxing entrance robe with hood up",
+    "Vintage 90s hip hop fit — baggy jeans, oversized jersey",
+    "Designer puffer jacket and beanie",
+    "Plain black t-shirt, fitted jeans, simple chain",
+    "Camo cargo pants and a fitted hoodie",
+    "Velour tracksuit with chunky gold chain",
+    "Sleeveless workout tee and basketball shorts",
+    "Bathrobe and slides (caught off-guard moment)",
+    "Sharp three-piece suit, no tie, top button open",
+    "Gucci tracksuit and aviator sunglasses",
+    "Crewneck sweater and slacks (event arrival look)",
+    "Wife-beater and shorts (backyard / gym vibe)",
+    "Compression shirt and joggers (training gear)"
+  ],
+  "cameraAngles": [
+    "Eye-level, straight-on camera perspective from approximately 8 feet away, positioned at chest height — both faces clearly visible",
+    "Slightly elevated angle from approximately 10 feet away at head height, both subjects facing the camera at 3/4",
+    "Tight medium shot, eye-level, approximately 6 feet away, both faces filling the upper third of the frame",
+    "Eye-level over-the-shoulder framing favoring whichever subject is talking, but still showing both faces clearly",
+    "Slight low angle from approximately 9 feet away at waist height, both faces tilted toward the camera"
   ],
   "clipTypes": [
     {
       "id": "establishing",
       "label": "Establishing location shot",
-      "action": "Wide shot of the empty location, no fighters in frame yet, setting the scene.",
-      "klingMotion": "Subtle ambient motion in the scene only. No subjects yet."
+      "action": "Wide shot of the location with both subjects already visible in frame, no action yet — setting the scene.",
+      "klingMotion": "Subtle ambient motion in the scene. Both subjects stand naturally in place. No fighting."
     },
     {
       "id": "faceoff",
       "label": "Faceoff / staredown",
-      "action": "Subject A and Subject B stand face to face, inches apart, locked in a heated staredown. Both confident, both holding their ground. No physical contact yet.",
+      "action": "Subject A and Subject B stand face to face, inches apart, locked in a heated staredown. Both confident, both holding their ground. No physical contact yet. Both faces clearly visible.",
       "klingMotion": "Subject A and Subject B stare each other down, mouths moving, intense expressions. No punches."
     },
     {
       "id": "trash-talk",
       "label": "Trash talk / yelling",
-      "action": "Subject A and Subject B face to face, yelling and pointing fingers. Both confident, both holding their ground.",
-      "klingMotion": "Subject A and Subject B yell at each other in English, mouths moving aggressively, pointing fingers, both confident. No punches."
+      "action": "Subject A and Subject B face to face, yelling and pointing fingers. Both confident, both holding their ground. Both faces visible.",
+      "klingMotion": "Subject A and Subject B yell at each other, mouths moving aggressively, pointing fingers, both confident. No punches."
     },
     {
       "id": "walkup-a",
       "label": "Subject A approaches",
-      "action": "Subject A walks toward the location with intensity and confidence. Subject B is not yet in frame.",
+      "action": "Subject A walks toward the location with intensity and confidence, face fully visible to camera. Subject B is not yet in frame.",
       "klingMotion": "Subject A walks forward toward the camera with intensity and confidence. Camera locked."
     },
     {
       "id": "walkup-b",
       "label": "Subject B approaches",
-      "action": "Subject B walks toward the location with intensity and confidence. Subject A is not yet in frame.",
+      "action": "Subject B walks toward the location with intensity and confidence, face fully visible to camera. Subject A is not yet in frame.",
       "klingMotion": "Subject B walks forward toward the camera with intensity and confidence. Camera locked."
     },
     {
       "id": "mid-fight",
       "label": "Mid-fight exchange",
-      "action": "Subject A and Subject B mid-fight, exchanging punches, both fighting hard, both strong.",
+      "action": "Subject A and Subject B mid-fight, exchanging punches, both fighting hard, both strong. Both faces still readable.",
       "klingMotion": "Subject A and Subject B throw punches at each other. A few sharp exchanges, both fighting hard."
     },
     {
       "id": "knockout-a",
       "label": "Knockout — Subject A wins",
-      "action": "The moment Subject A connects a clean punch. Subject B is just starting to fall, caught with a great shot.",
+      "action": "The moment Subject A connects a clean punch. Subject B is just starting to fall, caught with a great shot. Both faces visible.",
       "klingMotion": "Subject B throws one punch. Subject A slips it. Subject A throws one knockout punch. Subject B drops to the ground tough — caught with a great shot. Subject A stands still, calm and confident."
     },
     {
       "id": "knockout-b",
       "label": "Knockout — Subject B wins",
-      "action": "The moment Subject B connects a clean punch. Subject A is just starting to fall, caught with a great shot.",
+      "action": "The moment Subject B connects a clean punch. Subject A is just starting to fall, caught with a great shot. Both faces visible.",
       "klingMotion": "Subject A throws one punch. Subject B slips it. Subject B throws one knockout punch. Subject A drops to the ground tough — caught with a great shot. Subject B stands still, calm and confident."
     },
     {
       "id": "victory-a",
       "label": "Victory — Subject A stands tall",
-      "action": "Subject A stands tall and confident. Subject B is on the ground, tough but knocked out.",
+      "action": "Subject A stands tall and confident, face clearly visible. Subject B is on the ground, tough but knocked out, also visible.",
       "klingMotion": "Subject A stands tall and confident. Subject B is on the ground, tough but knocked out. Slight motion only."
     },
     {
       "id": "victory-b",
       "label": "Victory — Subject B stands tall",
-      "action": "Subject B stands tall and confident. Subject A is on the ground, tough but knocked out.",
+      "action": "Subject B stands tall and confident, face clearly visible. Subject A is on the ground, tough but knocked out, also visible.",
       "klingMotion": "Subject B stands tall and confident. Subject A is on the ground, tough but knocked out. Slight motion only."
+    },
+    {
+      "id": "shove",
+      "label": "Shove / push that escalates",
+      "action": "Subject A and Subject B chest-to-chest, one shoves the other backward. Both still standing, both confident, both faces visible. No punches yet.",
+      "klingMotion": "Subject A shoves Subject B in the chest. Subject B steps back one step but immediately surges forward. Both still standing, fired up."
+    },
+    {
+      "id": "crowd-pulls-them-apart",
+      "label": "Bystanders pull them apart",
+      "action": "Subject A and Subject B mid-confrontation, two background cameos (security, friends, or random crowd) reach in and try to hold them back. Subject A and Subject B are still the only ones in the action and looking strong. Both faces visible.",
+      "klingMotion": "Two background figures grab Subject A and Subject B by the chest and arms, trying to pull them apart. Subject A and Subject B keep yelling and reaching for each other. No punches land."
+    },
+    {
+      "id": "podcast-arguing",
+      "label": "Podcast / interview turning heated",
+      "action": "Subject A and Subject B seated at a podcast desk with microphones in front of them, arguing across the table, both leaning forward. Both faces clearly visible.",
+      "klingMotion": "Subject A and Subject B argue across a podcast desk, both leaning forward, mouths moving, pointing at each other across the microphones. No physical contact."
+    },
+    {
+      "id": "weigh-in",
+      "label": "Weigh-in staredown",
+      "action": "Subject A and Subject B at a weigh-in stage, both shirtless, foreheads nearly touching as they stare each other down. A weigh-in scale visible behind them. Both faces clearly visible.",
+      "klingMotion": "Subject A and Subject B stand forehead to forehead at the weigh-in, both shirtless, intense unblinking staredown, mouths set hard."
+    },
+    {
+      "id": "bottle-slam",
+      "label": "Champagne bottle slam at the club",
+      "action": "Subject A and Subject B at a VIP booth, one slams a champagne bottle down on the table between them. Both leaning across the table, both faces visible, both confident.",
+      "klingMotion": "Subject A slams a champagne bottle down on the table. Subject B doesn't flinch, leans forward, points at Subject A. Both still seated, both intense."
     }
   ],
-  "cameraAngles": [
-    "Eye-level, straight-on camera perspective from approximately 8 feet away, positioned at chest height",
-    "Low-angle perspective from below at chest height",
-    "Side angle perspective at 45 degrees from approximately 10 feet away",
-    "Slightly elevated angle from approximately 12 feet away, head height",
-    "Tight medium shot, eye-level, approximately 6 feet away"
-  ],
   "musicVibes": [
-    "Hard drill / trap",
-    "Cinematic orchestral build into hype hip hop",
-    "Upbeat rap with heavy bass",
-    "Slow tension build into hard drop",
-    "Old-school 90s boom-bap",
-    "Dramatic strings + 808s"
+    "Hard drill / trap with a heavy 808 beat drop on the knockout",
+    "Cinematic orchestral build that erupts into hype hip hop at the knockout",
+    "Upbeat rap with heavy bass throughout",
+    "Slow tension build with hi-hats into a hard drop on the knockout",
+    "Old-school 90s boom-bap with classic horns",
+    "Dramatic strings layered with 808s",
+    "Phonk / Memphis underground rap",
+    "West-coast G-funk synth",
+    "Stadium-rap anthem (Travis Scott / Drake vibe)"
   ]
 }
