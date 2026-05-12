@@ -77,6 +77,22 @@ function requireAdminToken(req, res, next) {
   if (!constantTimeEqual(got, expected)) return res.status(401).json({ error: 'bad token' });
   next();
 }
+// Accept EITHER an admin session cookie OR the bearer token.
+function requireAdminOrToken(req, res, next) {
+  const session = readSession(req);
+  if (session) {
+    const user = findById(session.uid);
+    if (user && user.role === 'admin') {
+      req.user = user;
+      return next();
+    }
+  }
+  const expected = process.env.ADMIN_API_TOKEN;
+  const header = req.headers.authorization || '';
+  const got = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (expected && constantTimeEqual(got, expected)) return next();
+  return res.status(401).json({ error: 'admin required' });
+}
 
 // ---------- static gate ----------
 const PROTECTED_PAGES = new Set(['/', '/index.html', '/profile', '/profile.html']);
@@ -287,8 +303,9 @@ app.post('/api/admin/publish', requireAdminToken, (req, res) => {
   }
 });
 
-// ---------- admin actions (session-based, the "Generate" button) ----------
-app.post('/api/admin/generate-one', requireAdmin, async (req, res) => {
+// ---------- admin actions (admin session OR bearer token) ----------
+// Used by both the UI "+ Generate" button and the n8n scheduled workflow.
+app.post('/api/admin/generate-one', requireAdminOrToken, async (req, res) => {
   try {
     const prompt = (req.body && req.body.prompt) || '';
     const result = await generateOneInternal(prompt);

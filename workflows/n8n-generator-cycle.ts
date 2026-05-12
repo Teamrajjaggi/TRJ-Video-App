@@ -1,15 +1,14 @@
 // n8n workflow: "Video Review — Generator Cycle"
 //
-// Live in n8n at:
-//   https://tvtai.app.n8n.cloud/workflow/ATpRqLYDcd7H02HF
+// Live at: https://tvtai.app.n8n.cloud/workflow/ATpRqLYDcd7H02HF
 //
-// Pipeline per cycle (every 3h or on manual trigger), 5 generations per cycle:
-//   1. Fetch Next Prompt   → GET  /api/admin/next-prompt
-//                            returns { system, user } with CLAUDE.md baked in
-//   2. Call Higgsfield     → POST <Higgsfield endpoint>
-//                            you wire the real URL + API key here
-//   3. Normalize           → adapts Higgsfield's response to /publish's shape
-//   4. Publish to Feed     → POST /api/admin/publish
+// n8n's only job is scheduling. The actual generation pipeline (compose
+// prompt -> Higgsfield CLI -> self-review -> publish) lives in the
+// Video Review app and is exposed at POST /api/admin/generate-one.
+//
+//   [Schedule (3h)] ──┐
+//                      ├──> Build 5 jobs ──> Loop x5 ──> POST /api/admin/generate-one
+//   [Manual]        ──┘                                       (Bearer ADMIN_API_TOKEN)
 
 import {
   workflow,
@@ -57,93 +56,31 @@ const fanOutFiveJobs = node({
   output: [{ index: 1 }, { index: 2 }, { index: 3 }, { index: 4 }, { index: 5 }],
 });
 
-const fetchNextPrompt = node({
+const generateOne = node({
   type: 'n8n-nodes-base.httpRequest',
   version: 4.4,
   config: {
-    name: 'Fetch Next Prompt',
+    name: 'Trigger Generate-One',
     parameters: {
-      method: 'GET',
+      method: 'POST',
       url: placeholder(
-        'Your app URL + /api/admin/next-prompt (e.g. http://localhost:3000/api/admin/next-prompt)',
+        'Your app URL + /api/admin/generate-one (e.g. http://localhost:3000/api/admin/generate-one)',
       ),
       authentication: 'genericCredentialType',
       genericAuthType: 'httpHeaderAuth',
+      sendBody: true,
+      contentType: 'json',
+      specifyBody: 'json',
+      jsonBody: expr('{{ JSON.stringify({}) }}'),
+      options: {
+        timeout: 600000,
+        response: { response: { neverError: true, fullResponse: false } },
+      },
     },
     credentials: { httpHeaderAuth: newCredential('Video Review Admin') },
     position: [1140, 350],
   },
-  output: [
-    { system: '# Video generation — system prompt ...', user: '# Generation request ...', composedAt: '2026-01-01T00:00:00.000Z' },
-  ],
-});
-
-const callHiggsfield = node({
-  type: 'n8n-nodes-base.httpRequest',
-  version: 4.4,
-  config: {
-    name: 'Call Higgsfield (REPLACE URL + AUTH)',
-    parameters: {
-      method: 'POST',
-      url: placeholder('Higgsfield generation endpoint (e.g. https://api.higgsfield.ai/v1/...)'),
-      authentication: 'genericCredentialType',
-      genericAuthType: 'httpHeaderAuth',
-      sendBody: true,
-      contentType: 'json',
-      specifyBody: 'json',
-      jsonBody: expr(
-        '{{ JSON.stringify({ prompt: $json.user, system: $json.system, params: { duration: 30, aspect_ratio: "9:16" } }) }}',
-      ),
-    },
-    credentials: { httpHeaderAuth: newCredential('Higgsfield API') },
-    position: [1440, 350],
-  },
-  output: [{ video_url: 'https://example.com/generated.mp4', thumbnail_url: 'https://example.com/generated.jpg', title: 'Generated draft', description: 'stub', tags: ['generated'] }],
-});
-
-const normalizeResponse = node({
-  type: 'n8n-nodes-base.code',
-  version: 2,
-  config: {
-    name: 'Normalize for /publish (ADAPT TO HIGGSFIELD RESPONSE)',
-    parameters: {
-      mode: 'runOnceForAllItems',
-      language: 'javaScript',
-      jsCode:
-        'const r = $input.first().json;\n' +
-        'return [{ json: {\n' +
-        "  title: r.title || ('Generated ' + Math.random().toString(36).slice(2, 7)),\n" +
-        "  description: r.description || '',\n" +
-        '  src: r.video_url || r.src || r.url,\n' +
-        "  poster: r.thumbnail_url || r.poster || r.thumb || '',\n" +
-        "  tags: Array.isArray(r.tags) ? r.tags : ['generated'],\n" +
-        "  prompt: r.prompt || ''\n" +
-        '} }];',
-    },
-    position: [1740, 350],
-  },
-  output: [{ title: 'Generated draft', description: '', src: 'https://example.com/generated.mp4', poster: 'https://example.com/generated.jpg', tags: ['generated'], prompt: '' }],
-});
-
-const publishDraft = node({
-  type: 'n8n-nodes-base.httpRequest',
-  version: 4.4,
-  config: {
-    name: 'Publish to Feed',
-    parameters: {
-      method: 'POST',
-      url: placeholder('Your app URL + /api/admin/publish'),
-      authentication: 'genericCredentialType',
-      genericAuthType: 'httpHeaderAuth',
-      sendBody: true,
-      contentType: 'json',
-      specifyBody: 'json',
-      jsonBody: expr('{{ JSON.stringify($json) }}'),
-    },
-    credentials: { httpHeaderAuth: newCredential('Video Review Admin') },
-    position: [2040, 350],
-  },
-  output: [{ ok: true, video: { id: 'vid_...' } }],
+  output: [{ posted: true, video: { id: 'vid_...' } }],
 });
 
 const loopBatches = splitInBatches({
@@ -169,15 +106,9 @@ const cycleDone = node({
 
 const howToNote = sticky(
   '## Generator cycle\n\n' +
-    'Every 3 hours (or on manual trigger) this workflow runs 5 generations and publishes each to the Video Review app.\n\n' +
-    '**Steps:**\n' +
-    '1. **Fetch Next Prompt** — pulls the composed prompt (system + user, with live CLAUDE.md context baked in) from `/api/admin/next-prompt`.\n' +
-    '2. **Call Higgsfield** — POSTs that prompt to the video-gen API. Replace the URL and credential with your Higgsfield endpoint + API key.\n' +
-    "3. **Normalize** — adapts Higgsfield's response shape into the publish payload.\n" +
-    '4. **Publish to Feed** — POSTs the final video record to `/api/admin/publish`.\n\n' +
-    '**Credentials:**\n' +
-    '- `Video Review Admin` → Header Auth, Name=`Authorization`, Value=`Bearer <ADMIN_API_TOKEN>`.\n' +
-    '- `Higgsfield API` → Header Auth or whatever scheme Higgsfield uses for your account.',
+    'Every 3 hours (or on manual trigger) this workflow calls `/api/admin/generate-one` on the Video Review app five times.\n\n' +
+    'The Video Review server handles the rest: composing the prompt from CLAUDE.md, shelling out to the Higgsfield CLI, self-reviewing the result, and publishing.\n\n' +
+    '**Credential:** `Video Review Admin` → Header Auth, Name=`Authorization`, Value=`Bearer <ADMIN_API_TOKEN>`.',
   [scheduleTrigger, manualTrigger, fanOutFiveJobs, loopBatches],
   { color: 5 },
 );
@@ -185,14 +116,6 @@ const howToNote = sticky(
 export default workflow('video-review-generator', 'Video Review — Generator Cycle')
   .add(scheduleTrigger)
   .to(fanOutFiveJobs)
-  .to(
-    loopBatches
-      .onDone(cycleDone)
-      .onEachBatch(
-        fetchNextPrompt.to(
-          callHiggsfield.to(normalizeResponse.to(publishDraft.to(nextBatch(loopBatches)))),
-        ),
-      ),
-  )
+  .to(loopBatches.onDone(cycleDone).onEachBatch(generateOne.to(nextBatch(loopBatches))))
   .add(manualTrigger)
   .to(fanOutFiveJobs);
