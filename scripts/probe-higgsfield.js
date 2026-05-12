@@ -23,63 +23,57 @@ const HEADERS = {
 
 // Each item: { path, body, label }
 const PROBES = [
-  // ---- Image gen (Nanobanana) ----
-  { path: 'nano-banana-pro', body: { prompt: 'ping' } },
-  { path: 'nano-banana-2', body: { prompt: 'ping' } },
-  { path: 'nano_banana_2', body: { prompt: 'ping' } },
-  { path: 'nano_banana_pro', body: { prompt: 'ping' } },
-  { path: 'google/nano-banana-pro', body: { prompt: 'ping' } },
-  { path: 'google/nano-banana-2', body: { prompt: 'ping' } },
-  { path: 'google/nano-banana-pro/text-to-image', body: { prompt: 'ping' } },
-  { path: 'google/nano-banana-2/text-to-image', body: { prompt: 'ping' } },
-  { path: 'nano-banana-pro/text-to-image', body: { prompt: 'ping' } },
-  { path: 'nano-banana-2/text-to-image', body: { prompt: 'ping' } },
-  // Seedream image gen (confirmed format in SDK README)
-  { path: 'bytedance/seedream/v4/text-to-image', body: { prompt: 'ping' } },
-  { path: 'seedream/v4/text-to-image', body: { prompt: 'ping' } },
-  { path: 'seedream', body: { prompt: 'ping' } },
+  // ---- Image gen: simpler nano-banana variants ----
+  { path: 'nano-banana', body: { prompt: 'ping' } },
+  { path: 'nanobanana', body: { prompt: 'ping' } },
+  { path: 'nanobanana-pro', body: { prompt: 'ping' } },
+  { path: 'nanobanana-2', body: { prompt: 'ping' } },
+  { path: 'nano_banana', body: { prompt: 'ping' } },
+  { path: 'banana', body: { prompt: 'ping' } },
+  { path: 'banana-pro', body: { prompt: 'ping' } },
+  // Nanobanana with version segments
+  { path: 'nano-banana/v1', body: { prompt: 'ping' } },
+  { path: 'nano-banana/v2', body: { prompt: 'ping' } },
+  { path: 'nano-banana/v3', body: { prompt: 'ping' } },
+  { path: 'nano-banana/pro', body: { prompt: 'ping' } },
+  // Other image gen possibilities
+  { path: 'flux', body: { prompt: 'ping' } },
+  { path: 'flux-pro', body: { prompt: 'ping' } },
+  { path: 'flux-1.1-pro', body: { prompt: 'ping' } },
+  { path: 'flux-dev', body: { prompt: 'ping' } },
+  { path: 'soul', body: { prompt: 'ping' } },
+  { path: 'higgsfield-soul', body: { prompt: 'ping' } },
+  { path: 'imagen', body: { prompt: 'ping' } },
+  { path: 'imagen-3', body: { prompt: 'ping' } },
+  // Generic
+  { path: 'text-to-image', body: { prompt: 'ping' } },
+  { path: 'v1/text-to-image', body: { prompt: 'ping' } },
 
-  // ---- Kling i2v variants (we know `kling` accepts input_image) ----
+  // ---- Kling i2v: discover the right input_image shape ----
   {
     path: 'kling',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
-    label: 'kling (with input_image)',
+    body: { prompt: 'ping', input_image: { url: 'https://example.com/x.png' } },
+    label: 'kling { input_image: { url } }',
   },
   {
-    path: 'kling-2.5',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+    path: 'kling',
+    body: { prompt: 'ping', input_image: { image: 'https://example.com/x.png' } },
+    label: 'kling { input_image: { image } }',
   },
   {
-    path: 'kling-2.5-turbo',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+    path: 'kling',
+    body: { prompt: 'ping', input_image: { source_url: 'https://example.com/x.png' } },
+    label: 'kling { input_image: { source_url } }',
   },
   {
-    path: 'kling/v2.5',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+    path: 'kling',
+    body: { prompt: 'ping', input_image: { id: 'placeholder' } },
+    label: 'kling { input_image: { id } }',
   },
   {
-    path: 'kling/v2.5-turbo',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
-  },
-  {
-    path: 'kling/image-to-video',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
-  },
-  {
-    path: 'kuaishou/kling-2.5/image-to-video',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
-  },
-  {
-    path: 'kuaishou/kling-2.5-turbo/image-to-video',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
-  },
-  {
-    path: 'kling-2.5/image-to-video',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
-  },
-  {
-    path: 'kling-2.5-turbo/image-to-video',
-    body: { prompt: 'ping', input_image: 'https://example.com/x.png' },
+    path: 'kling',
+    body: { prompt: 'ping', input_image: { type: 'image_url', url: 'https://example.com/x.png' } },
+    label: 'kling { input_image: { type, url } }',
   },
 ];
 
@@ -103,6 +97,6 @@ async function probe(item) {
   for (const item of PROBES) {
     const r = await probe(item);
     const label = item.label || item.path;
-    console.log(`${String(r.status).padEnd(5)} ${label.padEnd(50)} ${r.snippet}`);
+    console.log(`${String(r.status).padEnd(5)} ${label.padEnd(55)} ${r.snippet}`);
   }
 })();
