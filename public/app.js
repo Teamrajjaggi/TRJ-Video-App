@@ -4,6 +4,7 @@ const feed = document.getElementById('feed');
 const tmpl = document.getElementById('card-template');
 const usernameEl = document.getElementById('username');
 const roleChip = document.getElementById('role-chip');
+const masterChip = document.getElementById('master-chip');
 const generateBtn = document.getElementById('generate-btn');
 const syncDriveBtn = document.getElementById('sync-drive-btn');
 const logoutBtn = document.getElementById('logout-btn');
@@ -22,6 +23,9 @@ async function bootstrap() {
     roleChip.hidden = false;
     generateBtn.hidden = false;
     syncDriveBtn.hidden = false;
+  }
+  if (me.isMaster) {
+    masterChip.hidden = false;
   }
 
   logoutBtn.addEventListener('click', async () => {
@@ -120,6 +124,9 @@ function buildCard(video) {
   node.querySelector('.dislike-count').textContent = counts.dislike;
   node.querySelector('.comment-count').textContent = counts.comment;
 
+  const approvedChip = node.querySelector('.approved-chip');
+  if (video.approved) approvedChip.hidden = false;
+
   const likeBtn = node.querySelector('.action.like');
   const dislikeBtn = node.querySelector('.action.dislike');
   const commentBtn = node.querySelector('.action.comment-toggle');
@@ -153,6 +160,9 @@ function buildCard(video) {
   });
   dislikeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (me?.isMaster) {
+      if (!confirm(`Master dislike will permanently delete "${video.title}" and hard-ban it from re-syncing from Drive. Continue?`)) return;
+    }
     submitVerdict('dislike', node, video);
   });
 
@@ -270,12 +280,21 @@ async function submitVerdict(verdict, node, video) {
       method: 'POST',
       body: JSON.stringify({ videoId: video.id, verdict, comment: '' }),
     });
+    // Master dislike hard-deletes the video — pull the card from the feed.
+    if (data.masterAction === 'hard_deleted') {
+      node.remove();
+      return;
+    }
     applyMutation(video, verdict, data);
     updateCounts(node, video.reviews);
     const likeBtn = node.querySelector('.action.like');
     const dislikeBtn = node.querySelector('.action.dislike');
     setVerdictButtons(likeBtn, dislikeBtn, verdict, data.action);
     if (verdict === 'like' && data.action !== 'removed') flagSaved(likeBtn, 'saved');
+    // Master approve/unapprove toggles the chip
+    const approvedChip = node.querySelector('.approved-chip');
+    if (data.masterAction === 'approved') approvedChip.hidden = false;
+    if (data.masterAction === 'unapproved') approvedChip.hidden = true;
   } catch (e) {
     alert(`Failed: ${e.message}`);
   }

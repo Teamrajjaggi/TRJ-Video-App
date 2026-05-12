@@ -18,6 +18,7 @@ const {
   updateUsername,
   publicUser,
   bootstrapAdmin,
+  isMasterUsername,
 } = require('./lib/users');
 const { rebuildClaudeMd, readClaudeMd } = require('./lib/claude-md');
 const { saveLikedVideoToVault } = require('./lib/vault');
@@ -197,6 +198,9 @@ app.patch('/api/me', requireAuth, async (req, res) => {
 app.get('/api/videos', requireAuth, (req, res) => {
   const videos = listVideos();
   const reviews = listReviews();
+  const approvedIds = new Set(
+    getDb().prepare('SELECT video_id FROM approval_queue').all().map((r) => r.video_id),
+  );
   const byVideo = {};
   for (const r of reviews) {
     if (!byVideo[r.videoId]) byVideo[r.videoId] = [];
@@ -212,6 +216,7 @@ app.get('/api/videos', requireAuth, (req, res) => {
         myVerdict:
           mine.find((r) => r.verdict === 'like' || r.verdict === 'dislike') || null,
         myComment: mine.find((r) => r.verdict === 'comment') || null,
+        approved: approvedIds.has(v.id),
       };
     }),
   );
@@ -328,9 +333,50 @@ async function handleReview(req, res, { kindOverride } = {}) {
     }
   }
 
+  // Master account workflow: like = approval, dislike = hard delete + ban.
+  let masterAction = null;
+  if (isMasterUsername(req.user.username)) {
+    if (verdict === 'like') {
+      if (action === 'removed') {
+        // Master un-liked → pull from approval queue
+        db.prepare('DELETE FROM approval_queue WHERE video_id = ?').run(videoId);
+        masterAction = 'unapproved';
+      } else if (action === 'added' || action === 'updated') {
+        db.prepare(
+          `INSERT INTO approval_queue (video_id, approved_by, approved_at)
+           VALUES (?, ?, ?)
+           ON CONFLICT(video_id) DO UPDATE SET approved_by = excluded.approved_by, approved_at = excluded.approved_at`,
+        ).run(videoId, userId, new Date().toISOString());
+        masterAction = 'approved';
+      }
+    } else if (verdict === 'dislike' && (action === 'added' || action === 'updated')) {
+      // Hard delete + ban from re-sync
+      const driveRow = db
+        .prepare('SELECT drive_id FROM drive_sync WHERE video_id = ?')
+        .get(videoId);
+      if (driveRow?.drive_id) {
+        db.prepare(
+          `INSERT INTO banned_drive_ids (drive_id, banned_by, banned_at, original_title)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(drive_id) DO UPDATE SET banned_by = excluded.banned_by, banned_at = excluded.banned_at`,
+        ).run(driveRow.drive_id, userId, new Date().toISOString(), video.title);
+      }
+      const key = r2KeyForUrl(video.src);
+      if (key && r2Configured()) {
+        try {
+          await deleteObject({ key });
+        } catch (e) {
+          console.warn('[master-dislike] R2 cleanup failed:', e.message);
+        }
+      }
+      db.prepare('DELETE FROM videos WHERE id = ?').run(videoId);
+      masterAction = 'hard_deleted';
+    }
+  }
+
   rebuildClaudeMd(listReviews(), listVideos());
 
-  res.json({ ok: true, action, review, vault });
+  res.json({ ok: true, action, review, vault, masterAction });
 }
 
 app.post('/api/review', requireAuth, (req, res) => handleReview(req, res));
@@ -452,6 +498,37 @@ app.post('/api/admin/generate-one', requireAdminOrToken, async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Videos the master account has approved (master-likes). Ready-to-post queue.
+app.get('/api/admin/approved', requireAdminOrToken, (req, res) => {
+  const rows = getDb()
+    .prepare(
+      `SELECT v.*, aq.approved_at, aq.approved_by
+       FROM videos v
+       JOIN approval_queue aq ON v.id = aq.video_id
+       ORDER BY aq.approved_at DESC`,
+    )
+    .all();
+  res.json(
+    rows.map((r) => ({ ...rowToVideo(r), approvedAt: r.approved_at, approvedBy: r.approved_by })),
+  );
+});
+
+// Drive file ids the master has hard-banned. Drive sync skips these.
+app.get('/api/admin/banned', requireAdminOrToken, (req, res) => {
+  const rows = getDb()
+    .prepare('SELECT * FROM banned_drive_ids ORDER BY banned_at DESC')
+    .all();
+  res.json(rows);
+});
+
+// Unban a Drive file id so the next sync re-imports it.
+app.delete('/api/admin/banned/:driveId', requireAdminOrToken, (req, res) => {
+  const r = getDb()
+    .prepare('DELETE FROM banned_drive_ids WHERE drive_id = ?')
+    .run(req.params.driveId);
+  res.json({ ok: true, removed: r.changes });
 });
 
 app.post('/api/admin/sync-drive', requireAdminOrToken, async (req, res) => {
