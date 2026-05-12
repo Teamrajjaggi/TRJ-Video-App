@@ -2,12 +2,6 @@
 // Probe Higgsfield to find a valid model "application" path.
 //
 // Usage: node scripts/probe-higgsfield.js
-//
-// Reads HIGGSFIELD_KEY_ID + HIGGSFIELD_API_KEY from .env, then POSTs a
-// tiny prompt to a list of candidate model paths. Prints the status code
-// for each so you can pick a working one. Anything that returns 200/202
-// (or even 400 — a real model rejecting the body) is valid; 404 means
-// the model doesn't exist on the platform.
 
 require('dotenv').config();
 
@@ -22,73 +16,71 @@ const credOrder = process.env.HIGGSFIELD_CRED_ORDER || 'id-first';
 const cred =
   credOrder === 'key-first' ? `${apiKey}:${keyId}` : `${keyId}:${apiKey}`;
 
-const PATHS = [
-  // Kling family
-  'kling/v3.0/text-to-video',
-  'kling-v3.0/text-to-video',
-  'kling/3.0/text-to-video',
-  'kling3.0/text-to-video',
-  'kling/v2.5/text-to-video',
-  'kling/v2.1/text-to-video',
-  'kling/v2.0/text-to-video',
-  'kling/v1.6/text-to-video',
-  'kuaishou/kling/v3.0/text-to-video',
-  'kuaishou/kling-3.0/text-to-video',
-  'kuaishou/kling/v2.0/text-to-video',
-  // Higgsfield in-house
-  'higgsfield/dop/text-to-video',
-  'higgsfield/dop/v1/text-to-video',
-  'higgsfield/soul/text-to-video',
-  // Other vendors
-  'minimax/hailuo/text-to-video',
-  'minimax/hailuo-02/text-to-video',
-  'bytedance/seedance/v1/text-to-video',
-  'bytedance/seedance/text-to-video',
-  'google/veo/v3/text-to-video',
-  'google/veo3/text-to-video',
-  'openai/sora2/text-to-video',
-  'openai/sora/text-to-video',
-  'alibaba/wan/v2.5/text-to-video',
-  // Also try a likely "list models" route to see what's available
-  '__list_models_probe__:GET:/models',
-  '__list_models_probe__:GET:/applications',
-  '__list_models_probe__:GET:/v1/models',
+const HEADERS = {
+  Authorization: `Key ${cred}`,
+  'Content-Type': 'application/json',
+  Accept: 'application/json',
+};
+
+// Format: "METHOD path [body]"
+const PROBES = [
+  // Known-working from official README — confirms our auth + format is right
+  'POST bytedance/seedream/v4/text-to-image',
+  // Discovery: POST to plural routes (we saw they exist via 405 on GET)
+  'POST models',
+  'POST applications',
+  'POST v1/models',
+  'POST v1/applications',
+  // CLI-style underscored model ids (the CLI uses `kling3_0`)
+  'POST kling3_0',
+  'POST seedance_v1',
+  'POST higgsfield-dop',
+  // Single-segment vendor paths
+  'POST kling',
+  'POST seedance',
+  'POST hailuo',
+  'POST veo',
+  'POST sora',
+  // /apps namespace
+  'POST apps/kling-3.0/text-to-video',
+  'POST apps/kling/v3.0/text-to-video',
+  // model-id with /text-to-video suffix at root
+  'POST kling-3.0/text-to-video',
+  'POST kling-3/text-to-video',
+  'POST seedance-v1/text-to-video',
+  'POST hailuo-02/text-to-video',
+  'POST veo-3/text-to-video',
+  'POST sora-2/text-to-video',
+  // platform-style: vendor/model/task
+  'POST kuaishou/kling-3.0/text-to-video',
+  'POST bytedance/seedance-v1/text-to-video',
+  'POST minimax/hailuo-02/text-to-video',
+  // No version number
+  'POST kuaishou/kling/text-to-video',
+  'POST bytedance/seedance/text-to-video',
 ];
 
-async function probe(item) {
-  let method = 'POST';
-  let url;
-  let body = JSON.stringify({ prompt: 'ping', duration: 5 });
-  if (item.startsWith('__list_models_probe__')) {
-    const [, m, path] = item.split(':');
-    method = m;
-    url = `${BASE}${path}`;
-    body = undefined;
-  } else {
-    url = `${BASE}/${item}`;
-  }
+async function probe(spec) {
+  const [method, ...rest] = spec.split(' ');
+  const path = rest.join(' ');
+  const url = `${BASE}/${path}`;
   try {
     const res = await fetch(url, {
       method,
-      headers: {
-        Authorization: `Key ${cred}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body,
+      headers: HEADERS,
+      body: method === 'POST' ? JSON.stringify({ prompt: 'ping', duration: 5 }) : undefined,
     });
     const text = await res.text();
-    return { item, status: res.status, snippet: text.slice(0, 160).replace(/\s+/g, ' ') };
+    return { spec, status: res.status, snippet: text.slice(0, 240).replace(/\s+/g, ' ') };
   } catch (e) {
-    return { item, status: 'ERR', snippet: e.message.slice(0, 160) };
+    return { spec, status: 'ERR', snippet: e.message.slice(0, 200) };
   }
 }
 
 (async () => {
   console.log(`Probing ${BASE} with cred order=${credOrder}\n`);
-  for (const p of PATHS) {
-    const r = await probe(p);
-    const label = r.item.replace('__list_models_probe__:', '');
-    console.log(`${String(r.status).padEnd(5)} ${label.padEnd(50)} ${r.snippet}`);
+  for (const spec of PROBES) {
+    const r = await probe(spec);
+    console.log(`${String(r.status).padEnd(5)} ${spec.padEnd(50)} ${r.snippet}`);
   }
 })();
