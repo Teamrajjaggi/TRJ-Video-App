@@ -16,3 +16,6 @@ data/users.json
 
 # local-only subject identity (never commit)
 prompts/subjects.local.md
+
+# drive sync state (regenerated locally)
+data/drive-sync.json

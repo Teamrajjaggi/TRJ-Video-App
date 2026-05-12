@@ -38,6 +38,7 @@ const {
   descriptionFor,
 } = require('./lib/playbook');
 const { putObject, r2Configured, publicUrlFor } = require('./lib/r2');
+const { syncFromDrive } = require('./lib/drive-sync');
 
 const VIDEOS_PATH = path.join(__dirname, 'data', 'videos.json');
 const REVIEWS_PATH = path.join(__dirname, 'data', 'reviews.json');
@@ -412,6 +413,16 @@ app.post('/api/admin/generate-one', requireAdminOrToken, async (req, res) => {
   try {
     const prompt = (req.body && req.body.prompt) || '';
     const result = await generateOneInternal(prompt);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Pull any new videos from the configured Google Drive folder into the feed.
+app.post('/api/admin/sync-drive', requireAdminOrToken, async (req, res) => {
+  try {
+    const result = await syncFromDrive();
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });

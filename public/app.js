@@ -5,6 +5,7 @@ const tmpl = document.getElementById('card-template');
 const usernameEl = document.getElementById('username');
 const roleChip = document.getElementById('role-chip');
 const generateBtn = document.getElementById('generate-btn');
+const syncDriveBtn = document.getElementById('sync-drive-btn');
 const logoutBtn = document.getElementById('logout-btn');
 
 let me = null;
@@ -20,6 +21,7 @@ async function bootstrap() {
     roleChip.textContent = 'admin';
     roleChip.hidden = false;
     generateBtn.hidden = false;
+    syncDriveBtn.hidden = false;
   }
 
   logoutBtn.addEventListener('click', async () => {
@@ -41,6 +43,29 @@ async function bootstrap() {
     } finally {
       generateBtn.disabled = false;
       generateBtn.textContent = '+ Generate';
+    }
+  });
+
+  syncDriveBtn.addEventListener('click', async () => {
+    syncDriveBtn.disabled = true;
+    syncDriveBtn.textContent = 'Syncing…';
+    try {
+      const r = await jsonFetch('/api/admin/sync-drive', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      if (!r.ok) {
+        alert(`Sync failed: ${r.error}`);
+      } else {
+        const msg = `Drive: ${r.discovered} files, ${r.added} new, ${r.skipped} already in feed${r.errors ? `, ${r.errors} errors` : ''}.`;
+        alert(msg);
+        await loadVideos();
+      }
+    } catch (e) {
+      alert(`Sync failed: ${e.message}`);
+    } finally {
+      syncDriveBtn.disabled = false;
+      syncDriveBtn.textContent = '↻ Sync Drive';
     }
   });
 
