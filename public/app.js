@@ -147,13 +147,21 @@ function buildCard(video) {
     else videoEl.pause();
   });
 
-  likeBtn.addEventListener('click', () => submitVerdict('like', node, video));
-  dislikeBtn.addEventListener('click', () => submitVerdict('dislike', node, video));
+  likeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    submitVerdict('like', node, video);
+  });
+  dislikeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    submitVerdict('dislike', node, video);
+  });
 
-  commentBtn.addEventListener('click', () => {
+  commentBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     commentsPanel.hidden = !commentsPanel.hidden;
   });
-  closeBtn.addEventListener('click', () => {
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     commentsPanel.hidden = true;
   });
 
