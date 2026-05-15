@@ -57,7 +57,17 @@ const fetchApproved = node({
     credentials: { httpHeaderAuth: newCredential('Video Review Admin') },
     position: [540, 350],
   },
-  output: [[{ id: 'vid_abc', title: 'Example', src: 'https://...mp4' }]],
+  // Rows carry the AI caption + hashtags generated on approval.
+  output: [
+    [
+      {
+        id: 'vid_abc',
+        filename: 'clip.mp4',
+        caption: 'Example caption',
+        hashtags: ['example'],
+      },
+    ],
+  ],
 });
 
 const splitItems = node({
@@ -68,7 +78,9 @@ const splitItems = node({
     parameters: { fieldToSplitOut: 'data', include: 'noOtherFields' },
     position: [840, 350],
   },
-  output: [{ id: 'vid_abc', title: 'Example', src: 'https://...mp4' }],
+  output: [
+    { id: 'vid_abc', filename: 'clip.mp4', caption: 'Example caption', hashtags: ['example'] },
+  ],
 });
 
 const loop = splitInBatches({
@@ -87,10 +99,14 @@ const stubPost = node({
       jsCode:
         "const item = $input.first().json;\n" +
         "// === REPLACE THIS BLOCK WITH REAL POSTING WHEN YOU'RE READY ===\n" +
-        "console.log('[stub-post] would post:', item.id, item.title, item.src);\n" +
+        "// item.caption + item.hashtags are the AI-generated post text.\n" +
+        "const tags = (item.hashtags || []).map(h => '#' + h).join(' ');\n" +
+        "const postText = [item.caption, tags].filter(Boolean).join('\\n\\n');\n" +
+        "console.log('[stub-post] would post:', item.id, postText);\n" +
         "return [{ json: {\n" +
         "  videoId: item.id,\n" +
-        "  title: item.title,\n" +
+        "  caption: item.caption,\n" +
+        "  hashtags: item.hashtags,\n" +
         "  targets: ['stub:no-network-call'],\n" +
         "  postedAt: new Date().toISOString()\n" +
         "} }];",

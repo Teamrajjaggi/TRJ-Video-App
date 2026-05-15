@@ -3,30 +3,74 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#050505" />
-    <title>Approved videos · Video Review</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <meta name="theme-color" content="#09090b" />
+    <title>Approved queue · TRJ Review</title>
     <style>
+      :root {
+        --bg: #09090b;
+        --surface: #1c1c22;
+        --surface-2: #2a2a32;
+        --border: rgba(255, 255, 255, 0.09);
+        --border-strong: rgba(255, 255, 255, 0.16);
+        --text: #fafafa;
+        --muted: #9a9aa6;
+        --approve: #22c55e;
+        --reject: #f43f5e;
+        --accent: #6366f1;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
       body {
-        overflow: auto;
-        padding: max(20px, env(safe-area-inset-top)) 16px 24px;
+        background: radial-gradient(120% 60% at 50% 0%, #18181f 0%, var(--bg) 60%);
+        color: var(--text);
+        font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
+        min-height: 100vh;
+        padding: max(20px, env(safe-area-inset-top)) 16px 40px;
+      }
+      .wrap {
+        width: min(820px, 100%);
+        margin: 0 auto;
       }
       .page-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        margin-bottom: 18px;
         flex-wrap: wrap;
+        margin-bottom: 16px;
       }
       .page-head h1 {
-        margin: 0;
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         letter-spacing: -0.02em;
       }
-      .page-head .meta-line {
+      .meta-line {
         color: var(--muted);
-        font-size: 0.875rem;
+        font-size: 0.85rem;
+        margin-top: 2px;
+      }
+      .head-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .ghost {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.16s ease;
+      }
+      .ghost:hover {
+        background: var(--surface-2);
       }
       .filters {
         display: flex;
@@ -38,136 +82,187 @@
         color: var(--muted);
         border: 1px solid var(--border);
         border-radius: 999px;
-        padding: 6px 14px;
-        font-size: 0.8125rem;
+        padding: 7px 15px;
+        font-size: 0.8rem;
         font-weight: 600;
         cursor: pointer;
       }
       .filters button.active {
-        background: var(--fg);
+        background: var(--text);
         color: var(--bg);
-        border-color: var(--fg);
+        border-color: var(--text);
       }
       .rows {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
       }
       .row {
         display: grid;
-        grid-template-columns: 80px 1fr auto;
+        grid-template-columns: 92px 1fr;
         gap: 14px;
-        align-items: center;
-        padding: 12px;
+        padding: 14px;
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 14px;
-      }
-      .row video {
-        width: 80px;
-        height: 80px;
-        object-fit: cover;
-        border-radius: 8px;
-        background: #000;
-      }
-      .row .info {
-        min-width: 0;
-      }
-      .row .info-title {
-        font-weight: 600;
-        font-size: 0.95rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .row .info-sub {
-        color: var(--muted);
-        font-size: 0.8125rem;
-        margin-top: 2px;
-      }
-      .row .actions-row {
-        display: flex;
-        gap: 6px;
-      }
-      .row .actions-row button,
-      .row .actions-row a {
-        background: var(--surface-2);
-        color: var(--fg);
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        padding: 6px 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        cursor: pointer;
-        text-decoration: none;
-      }
-      .row .actions-row button:hover,
-      .row .actions-row a:hover {
-        background: rgba(255, 255, 255, 0.16);
-      }
-      .row .actions-row button.danger {
-        border-color: rgba(255, 77, 79, 0.4);
-        color: #fca5a5;
-      }
-      .row .actions-row button.danger:hover {
-        background: rgba(255, 77, 79, 0.2);
+        border-radius: 16px;
       }
       .row.posted {
-        opacity: 0.6;
+        opacity: 0.62;
+      }
+      .row video {
+        width: 92px;
+        height: 130px;
+        object-fit: cover;
+        border-radius: 10px;
+        background: #000;
+        cursor: pointer;
+      }
+      .info-title {
+        font-weight: 600;
+        font-size: 0.92rem;
+        word-break: break-word;
+      }
+      .info-sub {
+        color: var(--muted);
+        font-size: 0.78rem;
+        margin-top: 3px;
       }
       .posted-chip {
-        display: inline-flex;
-        background: rgba(52, 211, 153, 0.18);
-        color: var(--accent-like);
-        font-size: 0.625rem;
+        display: inline-block;
+        background: rgba(34, 197, 94, 0.18);
+        color: var(--approve);
+        font-size: 0.62rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         padding: 2px 8px;
         border-radius: 999px;
         margin-left: 6px;
+        vertical-align: middle;
+      }
+      /* caption block */
+      .caption {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+      }
+      .caption-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .caption textarea,
+      .caption input {
+        width: 100%;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        padding: 9px 11px;
+        font: inherit;
+        font-size: 0.86rem;
+        resize: vertical;
+      }
+      .caption textarea:focus,
+      .caption input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .caption input {
+        margin-top: 6px;
+      }
+      .cap-status {
+        font-size: 0.82rem;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .cap-status.err {
+        color: var(--reject);
+      }
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--border-strong);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 9px;
+      }
+      .actions button {
+        background: var(--surface-2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 7px 13px;
+        font-size: 0.76rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .actions button:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+      .actions button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .actions button.primary:hover {
+        background: #4f46e5;
+      }
+      .actions button.danger {
+        border-color: rgba(244, 63, 94, 0.4);
+        color: #fca5b5;
+      }
+      .actions button.danger:hover {
+        background: rgba(244, 63, 94, 0.18);
+      }
+      .actions button:disabled {
+        opacity: 0.5;
+        cursor: default;
       }
       .empty {
         text-align: center;
         color: var(--muted);
-        padding: 40px 0;
-      }
-      @media (max-width: 600px) {
-        .row {
-          grid-template-columns: 56px 1fr;
-        }
-        .row .actions-row {
-          grid-column: 1 / -1;
-          flex-wrap: wrap;
-        }
-        .row video {
-          width: 56px;
-          height: 56px;
-        }
+        padding: 48px 0;
       }
     </style>
   </head>
-  <body class="auth-body">
-    <div style="width: min(900px, 100%);">
+  <body>
+    <div class="wrap">
       <header class="page-head">
         <div>
           <h1>Approved queue</h1>
           <div class="meta-line" id="meta-line">Loading…</div>
         </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <a class="ghost" href="/">← back to feed</a>
-          <button class="ghost" id="download-json">Download JSON</button>
+        <div class="head-actions">
+          <a class="ghost" href="/">← Feed</a>
+          <button class="ghost" id="download-json" type="button">Download JSON</button>
         </div>
       </header>
 
       <div class="filters">
-        <button data-filter="unposted" class="active">Ready to post</button>
-        <button data-filter="posted">Already posted</button>
-        <button data-filter="all">All</button>
+        <button data-filter="unposted" class="active" type="button">Ready to post</button>
+        <button data-filter="posted" type="button">Posted</button>
+        <button data-filter="all" type="button">All</button>
       </div>
 
       <div class="rows" id="rows">
-        <div class="empty">Loading approved videos…</div>
+        <div class="empty">Loading…</div>
       </div>
     </div>
 
@@ -175,20 +270,18 @@
       import { jsonFetch, getMe } from '/auth.js';
 
       const me = await getMe();
-      if (!me) {
-        window.location.href = '/login.html';
-      }
-      if (me && me.role !== 'admin') {
-        document.body.innerHTML = '<div class="empty" style="padding:80px 20px;">Admin only.</div>';
-      }
+      if (!me) location.href = '/login.html';
 
       const rowsEl = document.getElementById('rows');
       const metaLine = document.getElementById('meta-line');
       let current = 'unposted';
+      let refreshTimer = null;
 
       document.querySelectorAll('.filters button').forEach((b) => {
         b.addEventListener('click', () => {
-          document.querySelectorAll('.filters button').forEach((x) => x.classList.remove('active'));
+          document
+            .querySelectorAll('.filters button')
+            .forEach((x) => x.classList.remove('active'));
           b.classList.add('active');
           current = b.dataset.filter;
           load();
@@ -197,7 +290,9 @@
 
       document.getElementById('download-json').addEventListener('click', async () => {
         const data = await jsonFetch(`/api/admin/approved?filter=${current}`);
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: 'application/json',
+        });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `approved-${current}-${new Date().toISOString().slice(0, 10)}.json`;
@@ -205,67 +300,202 @@
         setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       });
 
+      function cleanName(name) {
+        return (name || 'Untitled').replace(/\.[a-z0-9]+$/i, '');
+      }
+
+      function hashtagText(tags) {
+        return (Array.isArray(tags) ? tags : [])
+          .map((t) => '#' + String(t).replace(/^#/, ''))
+          .join(' ');
+      }
+
+      function parseHashtags(str) {
+        return String(str || '')
+          .split(/[\s,]+/)
+          .map((t) => t.replace(/^#/, '').trim())
+          .filter(Boolean);
+      }
+
+      // Build the caption section for one video row.
+      function buildCaption(v) {
+        const box = document.createElement('div');
+        box.className = 'caption';
+        const label = document.createElement('div');
+        label.className = 'caption-label';
+        label.textContent = 'Social caption';
+        box.appendChild(label);
+
+        const status = v.caption_status || 'none';
+
+        if (status === 'generating') {
+          const s = document.createElement('div');
+          s.className = 'cap-status';
+          s.innerHTML = '<span class="spinner"></span> Generating caption…';
+          box.appendChild(s);
+          return box;
+        }
+
+        if (status === 'none' || (status === 'error' && !v.caption)) {
+          if (status === 'error') {
+            const s = document.createElement('div');
+            s.className = 'cap-status err';
+            s.textContent = '⚠ ' + (v.caption_error || 'Caption generation failed');
+            box.appendChild(s);
+          } else {
+            const s = document.createElement('div');
+            s.className = 'cap-status';
+            s.textContent = 'No caption yet.';
+            box.appendChild(s);
+          }
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          actions.appendChild(regenButton(v));
+          box.appendChild(actions);
+          return box;
+        }
+
+        // ready (or error with a previous caption still present) → editable
+        const text = document.createElement('textarea');
+        text.rows = 2;
+        text.value = v.caption || '';
+        box.appendChild(text);
+
+        const tags = document.createElement('input');
+        tags.type = 'text';
+        tags.value = hashtagText(v.hashtags);
+        tags.placeholder = '#hashtags';
+        box.appendChild(tags);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'primary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', async () => {
+          saveBtn.disabled = true;
+          try {
+            await jsonFetch(
+              `/api/admin/approved/${encodeURIComponent(v.id)}/caption`,
+              {
+                method: 'PATCH',
+                body: JSON.stringify({
+                  caption: text.value.trim(),
+                  hashtags: parseHashtags(tags.value),
+                }),
+              },
+            );
+            saveBtn.textContent = 'Saved ✓';
+            setTimeout(() => {
+              saveBtn.textContent = 'Save';
+              saveBtn.disabled = false;
+            }, 1400);
+          } catch (e) {
+            alert(`Save failed: ${e.message}`);
+            saveBtn.disabled = false;
+          }
+        });
+        actions.appendChild(saveBtn);
+
+        actions.appendChild(regenButton(v));
+
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy';
+        copyBtn.addEventListener('click', async () => {
+          const out =
+            text.value.trim() +
+            (tags.value.trim() ? '\n\n' + hashtagText(parseHashtags(tags.value)) : '');
+          try {
+            await navigator.clipboard.writeText(out);
+            copyBtn.textContent = 'Copied ✓';
+            setTimeout(() => (copyBtn.textContent = 'Copy'), 1400);
+          } catch {
+            alert('Copy failed — clipboard not available.');
+          }
+        });
+        actions.appendChild(copyBtn);
+
+        box.appendChild(actions);
+        return box;
+      }
+
+      function regenButton(v) {
+        const btn = document.createElement('button');
+        btn.textContent = 'Regenerate';
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            await jsonFetch(
+              `/api/admin/approved/${encodeURIComponent(v.id)}/caption/regenerate`,
+              { method: 'POST', body: '{}' },
+            );
+            load();
+          } catch (e) {
+            alert(`Regenerate failed: ${e.message}`);
+            btn.disabled = false;
+          }
+        });
+        return btn;
+      }
+
       async function load() {
-        rowsEl.innerHTML = '<div class="empty">Loading…</div>';
+        if (refreshTimer) clearTimeout(refreshTimer);
         const items = await jsonFetch(`/api/admin/approved?filter=${current}`);
         metaLine.textContent = `${items.length} video${items.length === 1 ? '' : 's'}`;
-        if (items.length === 0) {
-          rowsEl.innerHTML = `<div class="empty">No videos in this view yet.</div>`;
+        if (!items.length) {
+          rowsEl.innerHTML = '<div class="empty">Nothing here yet.</div>';
           return;
         }
         rowsEl.innerHTML = '';
         for (const v of items) {
           const row = document.createElement('div');
-          row.className = 'row' + (v.postedAt ? ' posted' : '');
+          row.className = 'row' + (v.posted_at ? ' posted' : '');
 
           const vid = document.createElement('video');
-          vid.src = v.src;
+          vid.src = `/api/videos/${encodeURIComponent(v.id)}/stream`;
           vid.muted = true;
           vid.playsInline = true;
           vid.loop = true;
+          vid.preload = 'metadata';
           vid.addEventListener('mouseenter', () => vid.play().catch(() => {}));
           vid.addEventListener('mouseleave', () => vid.pause());
           row.appendChild(vid);
 
-          const info = document.createElement('div');
-          info.className = 'info';
+          const main = document.createElement('div');
+
           const title = document.createElement('div');
           title.className = 'info-title';
-          title.textContent = v.title;
-          if (v.postedAt) {
+          title.textContent = cleanName(v.filename);
+          if (v.posted_at) {
             const chip = document.createElement('span');
             chip.className = 'posted-chip';
             chip.textContent = 'posted';
             title.appendChild(chip);
           }
+          main.appendChild(title);
+
           const sub = document.createElement('div');
           sub.className = 'info-sub';
-          const tags = Array.isArray(v.tags) ? v.tags.slice(0, 4).join(' · ') : '';
-          sub.textContent = `approved ${new Date(v.approvedAt).toLocaleString()}${tags ? ' · ' + tags : ''}`;
-          info.appendChild(title);
-          info.appendChild(sub);
-          row.appendChild(info);
+          const when = v.reviewed_at ? new Date(v.reviewed_at).toLocaleString() : '—';
+          sub.textContent = `approved ${when}`;
+          main.appendChild(sub);
+
+          main.appendChild(buildCaption(v));
 
           const actions = document.createElement('div');
-          actions.className = 'actions-row';
+          actions.className = 'actions';
 
-          const openLink = document.createElement('a');
-          openLink.href = v.src;
-          openLink.target = '_blank';
-          openLink.rel = 'noopener';
-          openLink.textContent = 'Open';
-          actions.appendChild(openLink);
-
-          if (!v.postedAt) {
+          if (!v.posted_at) {
             const markBtn = document.createElement('button');
             markBtn.textContent = 'Mark as posted';
             markBtn.addEventListener('click', async () => {
-              if (!confirm('Mark this video as posted? (For now this is a manual flag; auto-post worker will do it later.)')) return;
+              if (!confirm('Mark this video as posted?')) return;
               try {
-                await jsonFetch(`/api/admin/approved/${encodeURIComponent(v.id)}/posted`, {
-                  method: 'POST',
-                  body: JSON.stringify({ targets: ['manual'] }),
-                });
+                await jsonFetch(
+                  `/api/admin/approved/${encodeURIComponent(v.id)}/posted`,
+                  { method: 'POST', body: JSON.stringify({ targets: ['manual'] }) },
+                );
                 load();
               } catch (e) {
                 alert(`Failed: ${e.message}`);
@@ -278,9 +508,11 @@
           removeBtn.className = 'danger';
           removeBtn.textContent = 'Un-approve';
           removeBtn.addEventListener('click', async () => {
-            if (!confirm('Remove this video from the approval queue? The video stays in the feed.')) return;
+            if (!confirm('Send this video back to pending? It leaves the queue.')) return;
             try {
-              await jsonFetch(`/api/admin/approved/${encodeURIComponent(v.id)}`, { method: 'DELETE' });
+              await jsonFetch(`/api/admin/approved/${encodeURIComponent(v.id)}`, {
+                method: 'DELETE',
+              });
               load();
             } catch (e) {
               alert(`Failed: ${e.message}`);
@@ -288,8 +520,14 @@
           });
           actions.appendChild(removeBtn);
 
-          row.appendChild(actions);
+          main.appendChild(actions);
+          row.appendChild(main);
           rowsEl.appendChild(row);
+        }
+
+        // Auto-refresh while a caption is still generating.
+        if (items.some((v) => v.caption_status === 'generating')) {
+          refreshTimer = setTimeout(load, 5000);
         }
       }
 

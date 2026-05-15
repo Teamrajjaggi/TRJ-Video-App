@@ -1,6 +1,9 @@
 require('dotenv').config();
 
 const path = require('path');
+const os = require('os');
+const fs = require('fs');
+const { pipeline } = require('stream/promises');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 
@@ -23,9 +26,14 @@ const {
 const db = require('./lib/db');
 const { approveVideo, rejectVideo } = require('./lib/approve');
 const { syncFromDrive } = require('./lib/drive-sync');
+const { streamDriveFile, uploadFileToFolder } = require('./lib/drive-source');
+const { moveFile } = require('./lib/drive-move');
+const { trimVideo } = require('./lib/edit-media');
+const { generateCaptionFor } = require('./lib/caption');
 
 const app = express();
-app.use(express.json({ limit: '5mb' }));
+// 20mb: cropped images arrive as base64 data URLs in the JSON body.
+app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
 
 // ---------- auth middleware ----------
@@ -159,6 +167,8 @@ async function handleReview(req, res) {
       } catch (e) {
         console.warn('[review] Drive move to Approved failed:', e.message);
       }
+      // Generate the social caption in the background — don't block the swipe.
+      generateCaptionFor(video.id);
       return res.json({ ok: true, status: 'approved', driveMove });
     }
 
@@ -179,6 +189,92 @@ async function handleReview(req, res) {
 
 app.post('/api/review', requireAuth, handleReview);
 
+// Approve an *edited* version: trim a video or crop an image, render the
+// result, push it to the Approved folder, and point the row at the new file.
+app.post('/api/review/edit', requireAuth, async (req, res) => {
+  const { videoId, edit } = req.body || {};
+  if (!videoId || !edit || !edit.type) {
+    return res.status(400).json({ error: 'videoId + edit{type} required' });
+  }
+  try {
+    const video = await db.getVideo(videoId);
+    if (!video) return res.status(404).json({ error: 'video not found' });
+
+    const approvedFolder = process.env.DRIVE_APPROVED_FOLDER_ID;
+    if (!approvedFolder) {
+      return res.status(503).json({ error: 'DRIVE_APPROVED_FOLDER_ID not set' });
+    }
+
+    const stamp = Date.now();
+    const base = (video.filename || 'clip').replace(/\.[^.]+$/, '');
+    let editedPath;
+    let editedName;
+    let editedMime;
+    const extras = {};
+
+    if (edit.type === 'trim') {
+      const inPath = path.join(os.tmpdir(), `trj-edit-in-${stamp}.mp4`);
+      editedPath = path.join(os.tmpdir(), `trj-edit-out-${stamp}.mp4`);
+      const driveRes = await streamDriveFile(video.drive_file_id);
+      await pipeline(driveRes.data, fs.createWriteStream(inPath));
+      try {
+        await trimVideo(inPath, editedPath, edit.start, edit.end);
+      } finally {
+        fs.promises.unlink(inPath).catch(() => {});
+      }
+      editedName = `${base}-trimmed.mp4`;
+      editedMime = 'video/mp4';
+      extras.trim_start_seconds = Number(edit.start);
+      extras.trim_end_seconds = Number(edit.end);
+    } else if (edit.type === 'crop') {
+      const m = /^data:(image\/[\w.+-]+);base64,(.+)$/s.exec(edit.dataUrl || '');
+      if (!m) return res.status(400).json({ error: 'crop needs an image data URL' });
+      editedMime = m[1];
+      const ext = (editedMime.split('/')[1] || 'png').replace(/[^\w]/g, '');
+      editedPath = path.join(os.tmpdir(), `trj-edit-out-${stamp}.${ext}`);
+      await fs.promises.writeFile(editedPath, Buffer.from(m[2], 'base64'));
+      editedName = `${base}-cropped.${ext}`;
+      if (edit.cropBox) extras.crop_box = edit.cropBox;
+    } else {
+      return res.status(400).json({ error: `unknown edit type: ${edit.type}` });
+    }
+
+    // Upload the rendered file to the Approved folder.
+    let uploaded;
+    try {
+      uploaded = await uploadFileToFolder(editedPath, editedName, editedMime, approvedFolder);
+    } finally {
+      fs.promises.unlink(editedPath).catch(() => {});
+    }
+
+    // Send the original clip to Trash (best-effort).
+    try {
+      const trash = process.env.DRIVE_TRASH_FOLDER_ID;
+      if (trash) await moveFile(video.drive_file_id, trash);
+    } catch (e) {
+      console.warn('[edit] moving original to Trash failed:', e.message);
+    }
+
+    // Point the row at the edited file and mark it approved.
+    const updated = await db.applyEdit(video.id, {
+      drive_file_id: uploaded.id,
+      filename: editedName,
+      mime_type: editedMime,
+      status: 'approved',
+      reviewed_at: new Date().toISOString(),
+      ...extras,
+    });
+
+    // Caption the edited result.
+    generateCaptionFor(video.id);
+
+    res.json({ ok: true, status: 'approved', video: updated });
+  } catch (e) {
+    console.warn('[edit] failed:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/comment', requireAuth, async (req, res) => {
   try {
     const { videoId, comment } = req.body || {};
@@ -195,17 +291,94 @@ app.post('/api/comment', requireAuth, async (req, res) => {
   }
 });
 
+// Comments on a single video, oldest first.
+app.get('/api/videos/:id/comments', requireAuth, async (req, res) => {
+  try {
+    res.json(await db.listComments(req.params.id));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Stream a Drive file's bytes through the server so the browser can play
+// a private file. Honours Range requests so <video> can seek.
+app.get('/api/videos/:id/stream', requireAuth, async (req, res) => {
+  try {
+    const video = await db.getVideo(req.params.id);
+    if (!video) return res.status(404).json({ error: 'video not found' });
+
+    const driveRes = await streamDriveFile(video.drive_file_id, req.headers.range);
+    res.status(driveRes.status || 200);
+    res.setHeader('Content-Type', video.mime_type || 'application/octet-stream');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    const len = driveRes.headers['content-length'];
+    const contentRange = driveRes.headers['content-range'];
+    if (len) res.setHeader('Content-Length', len);
+    if (contentRange) res.setHeader('Content-Range', contentRange);
+
+    driveRes.data.on('error', (e) => {
+      console.warn('[stream] drive error:', e.message);
+      if (!res.headersSent) res.status(502).end();
+      else res.destroy();
+    });
+    driveRes.data.pipe(res);
+  } catch (e) {
+    console.warn('[stream] failed:', e.message);
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+});
+
 // ---------- admin actions (admin session OR bearer token) ----------
 
-// Approved-and-not-yet-posted: ready for n8n to pick up.
+// Approved videos. ?filter=unposted (default) | posted | all
 app.get('/api/admin/approved', requireAdminOrToken, async (req, res) => {
   try {
-    const videos = await db.listVideos({ status: 'approved' });
+    const filter = req.query.filter || 'unposted';
+    const opts = { status: 'approved' };
+    if (filter === 'unposted') opts.posted = false;
+    else if (filter === 'posted') opts.posted = true;
+    // 'all' leaves the posted constraint off entirely.
+    const videos = await db.listVideos(opts);
     res.json(videos);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
+
+// Save an edited caption / hashtags.
+app.patch('/api/admin/approved/:id/caption', requireAdminOrToken, async (req, res) => {
+  try {
+    const { caption, hashtags } = req.body || {};
+    const patch = { status: 'ready', error: null };
+    if (caption !== undefined) patch.caption = String(caption);
+    if (hashtags !== undefined) {
+      patch.hashtags = Array.isArray(hashtags)
+        ? hashtags.map((h) => String(h).replace(/^#/, '').trim()).filter(Boolean)
+        : [];
+    }
+    const updated = await db.setCaption(req.params.id, patch);
+    res.json({ ok: true, video: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Re-run Gemini caption generation for a video (background).
+app.post(
+  '/api/admin/approved/:id/caption/regenerate',
+  requireAdminOrToken,
+  async (req, res) => {
+    try {
+      const video = await db.getVideo(req.params.id);
+      if (!video) return res.status(404).json({ error: 'video not found' });
+      generateCaptionFor(video.id);
+      res.json({ ok: true, status: 'generating' });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  },
+);
 
 // Mark an approved video as posted (called by the auto-post worker).
 app.post('/api/admin/approved/:id/posted', requireAdminOrToken, async (req, res) => {
