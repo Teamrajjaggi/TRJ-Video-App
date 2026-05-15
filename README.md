@@ -1,205 +1,76 @@
 # Video Review Portal
 
-TikTok-style review portal where only **Claude** posts and humans only
-**rate**. Every like / dislike / comment feeds a learning file (`CLAUDE.md`)
-that becomes the context for the next generation cycle. Liked videos are
-mirrored to a Google Drive vault for re-use. Disliked videos go on a
-learning queue. The generation cycle itself runs as an n8n workflow.
+VA-driven video approval pipeline. A virtual assistant uploads candidate clips and images to a Google Drive folder; the admin reviews them in a TikTok-style feed; approved clips flow into an n8n workflow that auto-posts to TikTok and Instagram Reels.
 
-## How it fits together
+## How it works
 
-```
-                ┌────────────────────────────┐
-                │     n8n workflow           │   (every 3h, 5 jobs)
-                │  ┌──────────────────────┐  │
-                │  │ Fetch /api/admin/    │  │
-                │  │   context (CLAUDE.md)│  │
-                │  └──────────────────────┘  │
-                │            │               │
-                │            ▼               │
-                │  ┌──────────────────────┐  │
-                │  │ Higgsfield call      │  │  ← you wire this up
-                │  │ (currently stubbed)  │  │
-                │  └──────────────────────┘  │
-                │            │               │
-                │            ▼               │
-                │  ┌──────────────────────┐  │
-                │  │ POST /api/admin/     │  │
-                │  │ publish              │  │
-                │  └──────────────────────┘  │
-                └────────────────────────────┘
-                             │
-                             ▼
-                ┌────────────────────────────┐
-                │   Video Review portal      │
-                │   (this Node.js app)       │
-                │                            │
-                │  Users: like / dislike /   │
-                │  comment                   │
-                │                            │
-                │  On like    → Drive vault  │
-                │  On dislike → learning Q   │
-                │  On comment → vocab buckets│
-                │                            │
-                │  CLAUDE.md regenerated     │
-                │  on every event            │
-                └────────────────────────────┘
-```
+- A VA drops files into the **Pending** folder on Google Drive.
+- The portal polls Pending on an interval and registers new files in Supabase (`status='pending'`).
+- The single admin logs in and reviews the feed. **Like** approves the file (moved to **Approved** in Drive, `status='approved'`). **Dislike** rejects it (moved to **Trash**, drive_file_id banned, `status='rejected'`).
+- A separate n8n workflow watches the Approved folder, posts each clip to TikTok and Instagram Reels, and moves the file to **Posted** (`status='posted'`).
+- Files in **Trash** are purged after a configurable retention window.
+
+## Stack
+
+- Node 22+ / Express
+- Supabase Postgres (auth, videos, comments, banned ids)
+- Google Drive (sole storage — no R2/S3)
+- n8n (Phase 4) for auto-post
 
 ## Setup
 
 ```bash
 npm install
 cp .env.example .env
-# Edit .env — at minimum set INVITE_CODE, ADMIN_API_TOKEN, SESSION_SECRET.
+# Fill in the values — at minimum:
+#   INVITE_CODE, ADMIN_API_TOKEN, SESSION_SECRET
+#   ADMIN_USERNAME, ADMIN_PASSWORD
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+#   GOOGLE_SERVICE_ACCOUNT_JSON (or _FILE)
+#   DRIVE_{PENDING,APPROVED,TRASH,POSTED}_FOLDER_ID
+```
+
+Run the schema migration against your Supabase project once. In the Supabase SQL editor, paste the contents of `db/migrations/001_init.sql` and execute.
+
+Then:
+
+```bash
 npm start
 ```
 
-On the **first start**, an admin account `claude` is created and its
-random password is printed to stdout **once**. Save it.
+The portal listens on `PORT` (default 3000). On first start the admin user is created with `ADMIN_USERNAME` and `ADMIN_PASSWORD`; if `ADMIN_PASSWORD` is unset a random one is printed once to stdout.
 
-To override that password ahead of time, set `ADMIN_PASSWORD` in `.env`.
+## Drive folder model
 
-Then open <http://localhost:3000>. You'll be redirected to `/login.html`.
-Sign in as `claude` (admin) to post or click "+ Generate", or sign up as a
-user with the invite code to start reviewing.
+Create four Drive folders and share each with the service account's `client_email` (Editor). Paste their IDs into the matching env vars:
 
-## What users can and can't do
-
-- **Sign up** with the invite code, sign in, change their **username**.
-- **Like / dislike / comment** on videos.
-- Cannot post videos. Cannot edit anything else on their profile.
-
-The `claude` admin account is the only one allowed to post videos
-(`POST /api/admin/publish`, called by n8n) and to use the manual
-"+ Generate" button.
-
-## How the learning loop works
-
-Every review event regenerates **`CLAUDE.md`** with these sections:
-
-- **Generation guidance** — synthesized do/don't list.
-- **Prefer (positive-net tags)** — tags with more likes than dislikes.
-- **Avoid (negative-net tags)** — tags with more dislikes than likes. The
-  self-review gate refuses to publish a draft that overlaps with these.
-- **Suspected dislike reasons** — for every dislike that was *not*
-  accompanied by a comment, the algorithm guesses which tag on that video
-  was the most likely culprit (lowest net score across the dataset).
-- **Comment vocabulary** — words bucketed by like / dislike verdict.
-- **Recent notes** — the last 20 free-text comments verbatim.
-
-Triggers, all three of which mutate the loop:
-
-| Event   | Side effect                                                                            |
-| ------- | -------------------------------------------------------------------------------------- |
-| like    | Save to Google Drive vault (with local mirror in `data/saved-vault/`) and rebuild MD   |
-| dislike | Append to `data/learning-queue.json` and rebuild MD                                    |
-| comment | Append to `data/learning-queue.json` (kind=comment) and rebuild MD                     |
-
-The next n8n cycle pulls the freshly rebuilt `CLAUDE.md` and feeds it back
-into the generator prompt.
+| Folder    | Purpose                                          | Env var                      |
+| --------- | ------------------------------------------------ | ---------------------------- |
+| Pending   | VA uploads here. Scanned by the sync job.        | `DRIVE_PENDING_FOLDER_ID`    |
+| Approved  | Approve action moves the file here.              | `DRIVE_APPROVED_FOLDER_ID`   |
+| Trash     | Reject action moves the file here. Auto-purged.  | `DRIVE_TRASH_FOLDER_ID`      |
+| Posted    | n8n moves files here after a successful post.    | `DRIVE_POSTED_FOLDER_ID`     |
 
 ## API
 
-### Session (cookie auth)
+| Method | Path                            | Auth        | Notes                                                  |
+| ------ | ------------------------------- | ----------- | ------------------------------------------------------ |
+| POST   | `/api/signup`                   | invite code | Creates an admin user                                  |
+| POST   | `/api/login`                    |             | Body: `{ username, password }`                         |
+| POST   | `/api/logout`                   |             |                                                        |
+| GET    | `/api/me`                       | cookie      |                                                        |
+| PATCH  | `/api/me`                       | cookie      | Body: `{ username }`                                   |
+| GET    | `/api/videos`                   | cookie      | Pending feed                                           |
+| POST   | `/api/review`                   | cookie      | Body: `{ videoId, verdict: like\|dislike }`            |
+| POST   | `/api/comment`                  | cookie      | Body: `{ videoId, comment }`                           |
+| GET    | `/api/admin/approved`           | admin+token | Approved-but-not-posted queue                          |
+| POST   | `/api/admin/approved/:id/posted`| admin+token | Mark posted (called by n8n)                            |
+| DELETE | `/api/admin/approved/:id`       | admin+token | Un-approve (status back to pending)                    |
+| GET    | `/api/admin/banned`             | admin+token | Banned drive_file_ids                                  |
+| DELETE | `/api/admin/banned/:driveId`    | admin+token | Unban (next sync will re-import)                       |
+| POST   | `/api/admin/sync-drive`         | admin+token | Manual sync trigger                                    |
+| DELETE | `/api/admin/videos/:id`         | admin+token | Hard-delete a video row                                |
 
-| Method | Path           | Notes                                                  |
-| ------ | -------------- | ------------------------------------------------------ |
-| POST   | `/api/signup`  | Body: `{ username, password, inviteCode }`             |
-| POST   | `/api/login`   | Body: `{ username, password }`                         |
-| POST   | `/api/logout`  |                                                        |
-| GET    | `/api/me`      | Current user                                           |
-| PATCH  | `/api/me`      | Body: `{ username }` — only username is editable       |
-| GET    | `/api/videos`  | Feed (auth required)                                   |
-| POST   | `/api/review`  | Body: `{ videoId, verdict: like\|dislike, comment? }`  |
-| POST   | `/api/comment` | Body: `{ videoId, comment }`                           |
-| GET    | `/api/preferences` | Serves the current `CLAUDE.md`                     |
+## Phase 4 workflows
 
-### Admin (cookie + role=admin)
-
-| Method | Path                       | Notes                              |
-| ------ | -------------------------- | ---------------------------------- |
-| POST   | `/api/admin/generate-one`  | Manual "+ Generate" button. Runs the internal stub pipeline. |
-
-### Machine (Bearer token via `ADMIN_API_TOKEN`)
-
-| Method | Path                          | Notes                                          |
-| ------ | ----------------------------- | ---------------------------------------------- |
-| GET    | `/api/admin/context`          | Returns `CLAUDE.md`                            |
-| GET    | `/api/admin/learning-queue`   | Dislike + comment events for prompt feedback   |
-| POST   | `/api/admin/publish`          | Body: `{ title, description, src, poster, tags, prompt }` — publishes to the feed |
-
-## The n8n workflow
-
-Workflow source: [`workflows/n8n-generator-cycle.ts`](workflows/n8n-generator-cycle.ts)
-Lives in n8n at: <https://tvtai.app.n8n.cloud/workflow/ATpRqLYDcd7H02HF>
-
-The workflow has a Schedule Trigger (every 3h) and a Manual Trigger. Both
-fan out into a 5-iteration loop. Each iteration:
-
-1. **Fetch CLAUDE.md** from `/api/admin/context`
-2. **Generate Draft** — currently a stub Code node. Replace it with an
-   HTTP Request node calling Higgsfield, passing the fetched context.
-3. **Publish to Feed** via `/api/admin/publish`.
-
-To finish wiring it up:
-
-1. In n8n, set the **Video Review Admin** credential to:
-   - Header Name: `Authorization`
-   - Value: `Bearer <your ADMIN_API_TOKEN>`
-2. Fill the two placeholder URLs (host of this app, e.g. `http://localhost:3000/api/admin/context`).
-3. Replace the **Generate Draft** Code node with an HTTP Request to
-   Higgsfield, using `$json.context` from the previous step as part of
-   your prompt.
-
-## Files
-
-```
-server.js                     # Express app: auth, feed, admin API
-lib/auth.js                   # Password hashing + signed cookies
-lib/users.js                  # User store + admin bootstrap
-lib/claude-md.js              # CLAUDE.md generator
-lib/vault.js                  # Google Drive vault for liked videos
-lib/learning.js               # Dislike + comment learning queue
-lib/video-gen.js              # Higgsfield call stub
-lib/review-gate.js            # Self-review (avoid-tag check)
-lib/workflow.js               # Internal fallback gen→review→publish
-public/                       # Static UI (login, signup, profile, feed)
-data/                         # JSON stores + Drive mirror (gitignored)
-workflows/                    # n8n workflow source
-CLAUDE.md                     # Auto-generated learning context (gitignored)
-```
-
-## Google Drive vault
-
-When liked, a video's metadata is uploaded to a folder you control:
-
-- `GOOGLE_SERVICE_ACCOUNT_JSON` (inline) **or** `GOOGLE_SERVICE_ACCOUNT_FILE` (path)
-- `VAULT_DRIVE_FOLDER_ID` — destination folder ID. Share the folder with
-  the service account's `client_email` (Editor access).
-
-If creds are missing, the vault falls back to writing to
-`data/saved-vault/` locally so the rest of the loop still works.
-
-## Deploying to Railway
-
-The app stores everything in a single SQLite database (`data/app.db` by
-default) so deployment is one Railway service + a persistent volume.
-
-1. <https://railway.app> → **New Project** → **Deploy from GitHub repo** →
-   pick this repo and the `claude/video-review-portal-iY3m7` branch.
-2. Service → **Variables** → paste every line from your local `.env`
-   (skip the `GOOGLE_SERVICE_ACCOUNT_FILE` line — see step 4).
-3. Add a new variable: `DB_PATH=/data/app.db`.
-4. Service → **Settings** → **Volumes** → **Add Volume**, mount path
-   `/data` (where the SQLite file lives so it survives redeploys).
-5. For Google Drive: copy the whole JSON service-account file content,
-   and paste it as the `GOOGLE_SERVICE_ACCOUNT_JSON` env var instead of
-   the local `GOOGLE_SERVICE_ACCOUNT_FILE` path.
-6. For subject descriptions: set `SUBJECT_A_DESCRIPTION` /
-   `SUBJECT_B_DESCRIPTION` env vars — the composer falls back to those
-   when `prompts/subjects.local.md` is missing.
-7. Service → **Settings** → **Networking** → **Generate Domain**.
-
-Subsequent pushes auto-redeploy. The mounted volume keeps your DB across
-deploys.
+n8n workflows live under `workflows/`. The autopost stub is at [`workflows/n8n-autopost-stub.ts`](workflows/n8n-autopost-stub.ts). The full posting workflow lands in Phase 4.

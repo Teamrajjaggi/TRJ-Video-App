@@ -18,101 +18,27 @@ const {
   updateUsername,
   publicUser,
   bootstrapAdmin,
-  isMasterUsername,
+  isAdminUsername,
 } = require('./lib/users');
-const { rebuildClaudeMd, readClaudeMd } = require('./lib/claude-md');
-const { saveLikedVideoToVault } = require('./lib/vault');
-const {
-  recordDislikeForLearning,
-  recordCommentForLearning,
-  readLearningQueue,
-} = require('./lib/learning');
-const { publishVideo, generateOneInternal } = require('./lib/workflow');
-const { composePrompt } = require('./lib/prompt');
-const {
-  pickPlan,
-  composeImagePrompt,
-  composeMotionPrompt,
-  titleFor,
-  tagsFor,
-  descriptionFor,
-} = require('./lib/playbook');
-const { putObject, deleteObject, r2KeyForUrl, r2Configured } = require('./lib/r2');
+const db = require('./lib/db');
+const { approveVideo, rejectVideo } = require('./lib/approve');
 const { syncFromDrive } = require('./lib/drive-sync');
-const { getDb } = require('./lib/db');
 
 const app = express();
-app.use(express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 
-function tryParse(s, fallback) {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return fallback;
-  }
-}
-
-function rowToVideo(r) {
-  if (!r) return null;
-  return {
-    id: r.id,
-    title: r.title,
-    description: r.description,
-    src: r.src,
-    poster: r.poster,
-    tags: tryParse(r.tags, []),
-    prompt: r.prompt,
-    postedAt: r.posted_at,
-    source: tryParse(r.source, {}),
-  };
-}
-function rowToReview(r) {
-  if (!r) return null;
-  return {
-    id: r.id,
-    videoId: r.video_id,
-    userId: r.user_id,
-    username: r.username,
-    verdict: r.verdict,
-    comment: r.comment,
-    at: r.at,
-  };
-}
-
-function listVideos() {
-  return getDb()
-    .prepare('SELECT * FROM videos ORDER BY posted_at')
-    .all()
-    .map(rowToVideo);
-}
-function listReviews() {
-  return getDb()
-    .prepare('SELECT * FROM reviews ORDER BY at')
-    .all()
-    .map(rowToReview);
-}
-function getVideoById(id) {
-  return rowToVideo(getDb().prepare('SELECT * FROM videos WHERE id = ?').get(id));
-}
-
 // ---------- auth middleware ----------
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const session = readSession(req);
   if (!session) return res.status(401).json({ error: 'auth required' });
-  const user = findById(session.uid);
+  const user = await findById(session.uid);
   if (!user) {
     clearSessionCookie(res);
     return res.status(401).json({ error: 'session invalid' });
   }
   req.user = user;
   next();
-}
-function requireAdmin(req, res, next) {
-  requireAuth(req, res, () => {
-    if (req.user.role !== 'admin') return res.status(403).json({ error: 'admin only' });
-    next();
-  });
 }
 function requireAdminToken(req, res, next) {
   const expected = process.env.ADMIN_API_TOKEN;
@@ -122,11 +48,11 @@ function requireAdminToken(req, res, next) {
   if (!constantTimeEqual(got, expected)) return res.status(401).json({ error: 'bad token' });
   next();
 }
-function requireAdminOrToken(req, res, next) {
+async function requireAdminOrToken(req, res, next) {
   const session = readSession(req);
   if (session) {
-    const user = findById(session.uid);
-    if (user && user.role === 'admin') {
+    const user = await findById(session.uid);
+    if (user && isAdminUsername(user.username)) {
       req.user = user;
       return next();
     }
@@ -157,7 +83,7 @@ app.post('/api/signup', async (req, res) => {
     if (!constantTimeEqual(String(inviteCode || ''), expectedInvite)) {
       return res.status(403).json({ error: 'invalid invite code' });
     }
-    const user = await createUser({ username, password, role: 'user' });
+    const user = await createUser({ username, password, role: 'admin' });
     issueSessionCookie(res, user);
     res.json({ ok: true, user: publicUser(user) });
   } catch (e) {
@@ -166,13 +92,17 @@ app.post('/api/signup', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body || {};
-  const user = findByUsername(username);
-  if (!user || !(await verifyPassword(password || '', user.passwordHash))) {
-    return res.status(401).json({ error: 'invalid credentials' });
+  try {
+    const { username, password } = req.body || {};
+    const user = await findByUsername(username);
+    if (!user || !(await verifyPassword(password || '', user.passwordHash))) {
+      return res.status(401).json({ error: 'invalid credentials' });
+    }
+    issueSessionCookie(res, user);
+    res.json({ ok: true, user: publicUser(user) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
-  issueSessionCookie(res, user);
-  res.json({ ok: true, user: publicUser(user) });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -195,382 +125,128 @@ app.patch('/api/me', requireAuth, async (req, res) => {
 });
 
 // ---------- feed ----------
-// The master account sees only videos they haven't reviewed yet — once
-// they like (approve) or dislike (delete), the card drops from their
-// queue. Other users see the full feed. Pass ?all=1 to override.
-app.get('/api/videos', requireAuth, (req, res) => {
-  const videos = listVideos();
-  const reviews = listReviews();
-  const approvedIds = new Set(
-    getDb().prepare('SELECT video_id FROM approval_queue').all().map((r) => r.video_id),
-  );
-  const byVideo = {};
-  for (const r of reviews) {
-    if (!byVideo[r.videoId]) byVideo[r.videoId] = [];
-    byVideo[r.videoId].push(r);
+// The pending queue: every file the VA has uploaded that hasn't been
+// approved or rejected yet.
+// TODO(phase3): the frontend in public/ expects the legacy enriched shape
+// (reviews[], myVerdict, approved, tags, etc.). The Phase 3 UI rewrite
+// will consume this raw row shape directly.
+app.get('/api/videos', requireAuth, async (req, res) => {
+  try {
+    const videos = await db.listVideos({ status: 'pending' });
+    res.json(videos);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
-  const isMaster = isMasterUsername(req.user.username);
-  const showAll = req.query.all === '1';
-
-  const enriched = videos.map((v) => {
-    const all = byVideo[v.id] || [];
-    const mine = all.filter((r) => r.userId === req.user.id);
-    return {
-      ...v,
-      reviews: all,
-      myVerdict:
-        mine.find((r) => r.verdict === 'like' || r.verdict === 'dislike') || null,
-      myComment: mine.find((r) => r.verdict === 'comment') || null,
-      approved: approvedIds.has(v.id),
-    };
-  });
-
-  const filtered =
-    isMaster && !showAll ? enriched.filter((v) => !v.myVerdict) : enriched;
-  res.json(filtered);
 });
 
-// Each user gets at most one verdict (like/dislike) and one comment per video.
-// Submitting the same verdict again toggles it off.
-async function handleReview(req, res, { kindOverride } = {}) {
-  const { videoId, verdict: vIn, comment } = req.body || {};
-  const verdict = kindOverride || vIn;
-  if (!videoId || !['like', 'dislike', 'comment'].includes(verdict)) {
-    return res.status(400).json({ error: 'videoId + verdict (like|dislike|comment) required' });
+// Approve / reject the single admin's verdict on a video.
+async function handleReview(req, res) {
+  const { videoId, verdict } = req.body || {};
+  if (!videoId || !['like', 'dislike'].includes(verdict)) {
+    return res.status(400).json({ error: 'videoId + verdict (like|dislike) required' });
   }
-  const video = getVideoById(videoId);
-  if (!video) return res.status(404).json({ error: 'video not found' });
+  try {
+    const video = await db.getVideo(videoId);
+    if (!video) return res.status(404).json({ error: 'video not found' });
 
-  const db = getDb();
-  const userId = req.user.id;
-  const username = req.user.username;
-  const text = typeof comment === 'string' ? comment.trim() : '';
-  const newId = () => `rev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const reviewedAt = new Date().toISOString();
 
-  let action = 'added';
-  let review = null;
-  let vault = null;
-
-  if (verdict === 'comment') {
-    const existingRow = db
-      .prepare(
-        "SELECT * FROM reviews WHERE user_id = ? AND video_id = ? AND verdict = 'comment'",
-      )
-      .get(userId, videoId);
-    const existing = rowToReview(existingRow);
-
-    if (!text && existing) {
-      db.prepare('DELETE FROM reviews WHERE id = ?').run(existing.id);
-      action = 'removed';
-    } else if (!text) {
-      return res.status(400).json({ error: 'comment is empty' });
-    } else if (existing) {
-      const at = new Date().toISOString();
-      db.prepare('UPDATE reviews SET comment = ?, at = ?, username = ? WHERE id = ?').run(
-        text,
-        at,
-        username,
-        existing.id,
-      );
-      review = {
-        id: existing.id,
-        videoId,
-        userId,
-        username,
-        verdict: 'comment',
-        comment: text,
-        at,
-      };
-      action = 'updated';
-      recordCommentForLearning(video, review, req.user);
-    } else {
-      const id = newId();
-      const at = new Date().toISOString();
-      db.prepare(
-        'INSERT INTO reviews (id, video_id, user_id, username, verdict, comment, at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      ).run(id, videoId, userId, username, 'comment', text, at);
-      review = { id, videoId, userId, username, verdict: 'comment', comment: text, at };
-      action = 'added';
-      recordCommentForLearning(video, review, req.user);
-    }
-  } else {
-    // like / dislike — one verdict slot per (userId, videoId)
-    const existingRow = db
-      .prepare(
-        "SELECT * FROM reviews WHERE user_id = ? AND video_id = ? AND verdict IN ('like', 'dislike')",
-      )
-      .get(userId, videoId);
-    const existing = rowToReview(existingRow);
-
-    if (existing && existing.verdict === verdict && !text) {
-      db.prepare('DELETE FROM reviews WHERE id = ?').run(existing.id);
-      action = 'removed';
-    } else if (existing) {
-      const at = new Date().toISOString();
-      db.prepare(
-        'UPDATE reviews SET verdict = ?, comment = ?, at = ?, username = ? WHERE id = ?',
-      ).run(verdict, text, at, username, existing.id);
-      review = { id: existing.id, videoId, userId, username, verdict, comment: text, at };
-      action = 'updated';
-      if (verdict === 'like') {
-        try {
-          vault = await saveLikedVideoToVault(video, review, req.user);
-        } catch (e) {
-          console.warn('[review] vault save failed:', e.message);
-        }
-      } else if (verdict === 'dislike') {
-        recordDislikeForLearning(video, review, req.user);
-      }
-    } else {
-      const id = newId();
-      const at = new Date().toISOString();
-      db.prepare(
-        'INSERT INTO reviews (id, video_id, user_id, username, verdict, comment, at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      ).run(id, videoId, userId, username, verdict, text, at);
-      review = { id, videoId, userId, username, verdict, comment: text, at };
-      action = 'added';
-      if (verdict === 'like') {
-        try {
-          vault = await saveLikedVideoToVault(video, review, req.user);
-        } catch (e) {
-          console.warn('[review] vault save failed:', e.message);
-        }
-      } else if (verdict === 'dislike') {
-        recordDislikeForLearning(video, review, req.user);
-      }
-    }
-  }
-
-  // Master account workflow: like = approval, dislike = hard delete + ban.
-  let masterAction = null;
-  if (isMasterUsername(req.user.username)) {
     if (verdict === 'like') {
-      if (action === 'removed') {
-        // Master un-liked → pull from approval queue
-        db.prepare('DELETE FROM approval_queue WHERE video_id = ?').run(videoId);
-        masterAction = 'unapproved';
-      } else if (action === 'added' || action === 'updated') {
-        db.prepare(
-          `INSERT INTO approval_queue (video_id, approved_by, approved_at)
-           VALUES (?, ?, ?)
-           ON CONFLICT(video_id) DO UPDATE SET approved_by = excluded.approved_by, approved_at = excluded.approved_at`,
-        ).run(videoId, userId, new Date().toISOString());
-        masterAction = 'approved';
+      await db.updateVideoStatus(video.id, 'approved', { reviewed_at: reviewedAt });
+      let driveMove = null;
+      try {
+        driveMove = await approveVideo(video);
+      } catch (e) {
+        console.warn('[review] Drive move to Approved failed:', e.message);
       }
-    } else if (verdict === 'dislike' && (action === 'added' || action === 'updated')) {
-      // Hard delete + ban from re-sync
-      const driveRow = db
-        .prepare('SELECT drive_id FROM drive_sync WHERE video_id = ?')
-        .get(videoId);
-      if (driveRow?.drive_id) {
-        db.prepare(
-          `INSERT INTO banned_drive_ids (drive_id, banned_by, banned_at, original_title)
-           VALUES (?, ?, ?, ?)
-           ON CONFLICT(drive_id) DO UPDATE SET banned_by = excluded.banned_by, banned_at = excluded.banned_at`,
-        ).run(driveRow.drive_id, userId, new Date().toISOString(), video.title);
-      }
-      const key = r2KeyForUrl(video.src);
-      if (key && r2Configured()) {
-        try {
-          await deleteObject({ key });
-        } catch (e) {
-          console.warn('[master-dislike] R2 cleanup failed:', e.message);
-        }
-      }
-      db.prepare('DELETE FROM videos WHERE id = ?').run(videoId);
-      masterAction = 'hard_deleted';
+      return res.json({ ok: true, status: 'approved', driveMove });
     }
+
+    // dislike → reject
+    await db.banDriveId(video.drive_file_id);
+    await db.updateVideoStatus(video.id, 'rejected', { reviewed_at: reviewedAt });
+    let driveMove = null;
+    try {
+      driveMove = await rejectVideo(video);
+    } catch (e) {
+      console.warn('[review] Drive move to Trash failed:', e.message);
+    }
+    return res.json({ ok: true, status: 'rejected', driveMove });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
-
-  rebuildClaudeMd(listReviews(), listVideos());
-
-  res.json({ ok: true, action, review, vault, masterAction });
 }
 
-app.post('/api/review', requireAuth, (req, res) => handleReview(req, res));
-app.post('/api/comment', requireAuth, (req, res) =>
-  handleReview(req, res, { kindOverride: 'comment' }),
-);
+app.post('/api/review', requireAuth, handleReview);
 
-// ---------- exposed CLAUDE.md ----------
-app.get('/api/preferences', requireAuth, (req, res) => {
-  const md = readClaudeMd();
-  const escaped = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  res.type('html').send(`<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CLAUDE.md · Video Review</title>
-  <style>
-    :root { color-scheme: dark; }
-    body { margin: 0; background: #000; color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    header { display: flex; align-items: center; gap: 12px;
-      padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
-      position: sticky; top: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
-    header a { color: #fff; text-decoration: none;
-      border: 1px solid rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 999px; font-size: 0.85rem; }
-    header a:hover { background: rgba(255,255,255,0.08); }
-    header h1 { margin: 0; font-size: 1rem; color: rgba(255,255,255,0.7); font-weight: 500; }
-    pre { margin: 0; padding: 24px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 0.85rem; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
-  </style>
-</head>
-<body>
-  <header>
-    <a href="/">← back to feed</a>
-    <h1>CLAUDE.md (auto-generated from reviews)</h1>
-  </header>
-  <pre>${escaped}</pre>
-</body>
-</html>`);
-});
-
-// ---------- admin / machine API (Bearer token) ----------
-app.get('/api/admin/context', requireAdminToken, (req, res) => {
-  res.type('text/markdown').send(readClaudeMd());
-});
-
-app.get('/api/admin/learning-queue', requireAdminToken, (req, res) => {
-  res.json(readLearningQueue());
-});
-
-app.get('/api/admin/next-prompt', requireAdminToken, (req, res) => {
-  const composed = composePrompt(readClaudeMd());
-  res.json(composed);
-});
-
-app.post('/api/admin/publish', requireAdminToken, (req, res) => {
+app.post('/api/comment', requireAuth, async (req, res) => {
   try {
-    const video = publishVideo(req.body || {});
-    res.json({ ok: true, video });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-app.get('/api/admin/plan', requireAdminToken, (req, res) => {
-  const plan = pickPlan();
-  const imagePrompt = composeImagePrompt(plan);
-  const motionPrompt = composeMotionPrompt(plan);
-  const referenceUrls = [
-    process.env.SUBJECT_A_REFERENCE,
-    process.env.SUBJECT_B_REFERENCE,
-  ].filter(Boolean);
-  res.json({
-    plan,
-    imagePrompt,
-    motionPrompt,
-    title: titleFor(plan),
-    description: descriptionFor(plan),
-    tags: tagsFor(plan),
-    referenceUrls,
-  });
-});
-
-app.post('/api/admin/stage-image', requireAdminToken, async (req, res) => {
-  try {
-    const { data, mimeType } = req.body || {};
-    if (!data || typeof data !== 'string') {
-      return res.status(400).json({ error: 'body.data (base64 string) required' });
+    const { videoId, comment } = req.body || {};
+    const body = typeof comment === 'string' ? comment.trim() : '';
+    if (!videoId || !body) {
+      return res.status(400).json({ error: 'videoId + non-empty comment required' });
     }
-    if (!r2Configured()) {
-      return res.status(503).json({ error: 'R2 not configured' });
-    }
-    const ext = (mimeType || '').includes('png')
-      ? 'png'
-      : (mimeType || '').includes('webp')
-        ? 'webp'
-        : 'jpg';
-    const key = `staging/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
-    const buf = Buffer.from(data, 'base64');
-    const result = await putObject({ key, body: buf, contentType: mimeType || 'image/png' });
-    if (!result?.url) {
-      return res
-        .status(503)
-        .json({ error: 'staging upload failed (R2_PUBLIC_BASE_URL not set?)' });
-    }
-    res.json({ ok: true, key: result.key, url: result.url });
+    const video = await db.getVideo(videoId);
+    if (!video) return res.status(404).json({ error: 'video not found' });
+    const row = await db.addComment(videoId, body);
+    res.json({ ok: true, comment: row });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
 // ---------- admin actions (admin session OR bearer token) ----------
-app.post('/api/admin/generate-one', requireAdminOrToken, async (req, res) => {
+
+// Approved-and-not-yet-posted: ready for n8n to pick up.
+app.get('/api/admin/approved', requireAdminOrToken, async (req, res) => {
   try {
-    const prompt = (req.body && req.body.prompt) || '';
-    const result = await generateOneInternal(prompt);
-    res.json(result);
+    const videos = await db.listVideos({ status: 'approved' });
+    res.json(videos);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Videos the master account has approved (master-likes). Ready-to-post queue.
-// Optional ?filter=unposted (default) | posted | all
-app.get('/api/admin/approved', requireAdminOrToken, (req, res) => {
-  const filter = (req.query.filter || 'unposted').toString();
-  let where = '';
-  if (filter === 'unposted') where = 'WHERE aq.posted_at IS NULL';
-  else if (filter === 'posted') where = 'WHERE aq.posted_at IS NOT NULL';
-  const rows = getDb()
-    .prepare(
-      `SELECT v.*, aq.approved_at, aq.approved_by, aq.posted_at, aq.posted_targets
-       FROM videos v
-       JOIN approval_queue aq ON v.id = aq.video_id
-       ${where}
-       ORDER BY aq.approved_at DESC`,
-    )
-    .all();
-  res.json(
-    rows.map((r) => ({
-      ...rowToVideo(r),
-      approvedAt: r.approved_at,
-      approvedBy: r.approved_by,
-      postedAt: r.posted_at,
-      postedTargets: r.posted_targets ? tryParse(r.posted_targets, []) : [],
-    })),
-  );
+// Mark an approved video as posted (called by the auto-post worker).
+app.post('/api/admin/approved/:id/posted', requireAdminOrToken, async (req, res) => {
+  try {
+    const updated = await db.updateVideoStatus(req.params.id, 'posted', {
+      posted_at: new Date().toISOString(),
+    });
+    res.json({ ok: true, video: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-// Mark an approved video as posted (called by the auto-post worker once a
-// video has actually been pushed downstream).
-app.post('/api/admin/approved/:id/posted', requireAdminOrToken, (req, res) => {
-  const videoId = req.params.id;
-  const targets = Array.isArray(req.body?.targets) ? req.body.targets : [];
-  const r = getDb()
-    .prepare(
-      `UPDATE approval_queue SET posted_at = ?, posted_targets = ? WHERE video_id = ?`,
-    )
-    .run(new Date().toISOString(), JSON.stringify(targets), videoId);
-  if (!r.changes) return res.status(404).json({ error: 'video not in approval queue' });
-  res.json({ ok: true });
+// Un-approve (status back to pending). Does NOT touch Drive.
+// TODO(phase2): also move the Drive file from Approved back to Pending.
+app.delete('/api/admin/approved/:id', requireAdminOrToken, async (req, res) => {
+  try {
+    const updated = await db.updateVideoStatus(req.params.id, 'pending', {
+      reviewed_at: null,
+    });
+    res.json({ ok: true, video: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-// Remove an approved video from the queue (un-approve) without deleting it.
-app.delete('/api/admin/approved/:id', requireAdminOrToken, (req, res) => {
-  const r = getDb()
-    .prepare('DELETE FROM approval_queue WHERE video_id = ?')
-    .run(req.params.id);
-  res.json({ ok: true, removed: r.changes });
+app.get('/api/admin/banned', requireAdminOrToken, async (req, res) => {
+  try {
+    res.json(await db.listBannedDriveIds());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-// Drive file ids the master has hard-banned. Drive sync skips these.
-app.get('/api/admin/banned', requireAdminOrToken, (req, res) => {
-  const rows = getDb()
-    .prepare('SELECT * FROM banned_drive_ids ORDER BY banned_at DESC')
-    .all();
-  res.json(rows);
-});
-
-// Unban a Drive file id so the next sync re-imports it.
-app.delete('/api/admin/banned/:driveId', requireAdminOrToken, (req, res) => {
-  const r = getDb()
-    .prepare('DELETE FROM banned_drive_ids WHERE drive_id = ?')
-    .run(req.params.driveId);
-  res.json({ ok: true, removed: r.changes });
+app.delete('/api/admin/banned/:driveId', requireAdminOrToken, async (req, res) => {
+  try {
+    await db.unbanDriveId(req.params.driveId);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.post('/api/admin/sync-drive', requireAdminOrToken, async (req, res) => {
@@ -582,48 +258,20 @@ app.post('/api/admin/sync-drive', requireAdminOrToken, async (req, res) => {
   }
 });
 
+// Hard-delete a video row. Does not delete the underlying Drive file —
+// use the reject flow for that.
 app.delete('/api/admin/videos/:id', requireAdminOrToken, async (req, res) => {
   try {
-    const videoId = req.params.id;
-    const db = getDb();
-    const video = getVideoById(videoId);
+    const video = await db.getVideo(req.params.id);
     if (!video) return res.status(404).json({ error: 'video not found' });
-
-    const reviewsRemoved = db
-      .prepare('SELECT COUNT(*) as n FROM reviews WHERE video_id = ?')
-      .get(videoId).n;
-    // ON DELETE CASCADE cleans up reviews automatically.
-    db.prepare('DELETE FROM videos WHERE id = ?').run(videoId);
-
-    let r2Removed = false;
-    let r2Error = null;
-    const key = r2KeyForUrl(video.src);
-    if (key && r2Configured()) {
-      try {
-        await deleteObject({ key });
-        r2Removed = true;
-      } catch (e) {
-        r2Error = e.message;
-        console.warn('[delete] R2 cleanup failed:', e.message);
-      }
-    }
-
-    rebuildClaudeMd(listReviews(), listVideos());
-
-    res.json({
-      ok: true,
-      deleted: { id: video.id, title: video.title },
-      r2Removed,
-      r2Error,
-      reviewsRemoved,
-    });
+    await db.deleteVideo(video.id);
+    res.json({ ok: true, deleted: { id: video.id, filename: video.filename } });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Auto-sync Drive on boot + on an interval so the admin doesn't have to
-// click the button every time. Off if DRIVE_SYNC_INTERVAL_MINUTES=0.
+// ---------- Drive auto-sync ----------
 let driveSyncInflight = false;
 async function autoSyncDrive(reason) {
   if (driveSyncInflight) return;
@@ -632,7 +280,7 @@ async function autoSyncDrive(reason) {
     const result = await syncFromDrive();
     if (result.ok) {
       console.log(
-        `[drive-sync] ${reason}: ${result.added} new / ${result.skipped} already in feed / ${result.errors} errors`,
+        `[drive-sync] ${reason}: ${result.added} new / ${result.skipped} skipped / ${result.errors} errors`,
       );
     } else if (result.error) {
       console.warn(`[drive-sync] ${reason}: skipped — ${result.error}`);
@@ -645,28 +293,27 @@ async function autoSyncDrive(reason) {
 }
 
 function scheduleDriveSync() {
-  const minutes = parseInt(process.env.DRIVE_SYNC_INTERVAL_MINUTES ?? '15', 10);
+  const minutes = parseInt(process.env.DRIVE_SYNC_INTERVAL_MINUTES ?? '30', 10);
   if (!minutes || minutes < 1) {
     console.log('[drive-sync] auto-sync disabled (DRIVE_SYNC_INTERVAL_MINUTES=0)');
     return;
   }
-  // Kick off once on boot (don't block startup).
   setTimeout(() => autoSyncDrive('boot sync'), 2000);
-  // Then run on the configured interval.
   setInterval(() => autoSyncDrive('scheduled'), minutes * 60 * 1000);
   console.log(`[drive-sync] auto-syncing every ${minutes} min`);
 }
 
+// TODO(phase2): trash purger — periodically delete Drive files that have
+// been sitting in DRIVE_TRASH_FOLDER_ID for more than TRASH_RETENTION_DAYS.
+
 // ---------- startup ----------
 async function start() {
-  // Eagerly init the DB so any startup errors surface immediately.
-  getDb();
+  db.init();
 
   const { user, bootstrappedPassword, resynced } = await bootstrapAdmin();
   if (bootstrappedPassword) {
     console.log('\n========================================================');
-    console.log('  Admin account "claude" bootstrapped.');
-    console.log(`  username: ${user.username}`);
+    console.log(`  Admin account "${user.username}" bootstrapped.`);
     console.log(`  password: ${bootstrappedPassword}`);
     console.log('  Save this now — it will not be printed again.');
     console.log('========================================================\n');

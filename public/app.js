@@ -309,7 +309,7 @@ function flagSaved(btn, label) {
 }
 
 async function deleteVideo(node, video) {
-  if (!confirm(`Delete "${video.title}"? This removes the video, all reviews on it, and the file from R2.`)) return;
+  if (!confirm(`Delete "${video.title}"? This removes the video, all reviews on it, and the file from Drive.`)) return;
   try {
     const r = await jsonFetch(`/api/admin/videos/${encodeURIComponent(video.id)}`, { method: 'DELETE' });
     node.remove();

@@ -1,15 +1,15 @@
 {
   "name": "video-review",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Simple TikTok-style portal for reviewing videos with approval/disapproval and a learning preferences file.",
+  "description": "VA video approval pipeline. VA drops files in a Drive folder; the admin approves/rejects in a TikTok-style feed; n8n auto-posts approved clips.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.658.1",
+    "@supabase/supabase-js": "^2.45.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.4.5",
