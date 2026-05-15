@@ -148,9 +148,14 @@ body {
 
 .deck {
   position: relative;
-  width: min(94vw, 420px);
+  /* Lock the card to the 9:16 video shape so the clip fills it exactly —
+     no black bars, nothing cropped. Sized to the available height. */
+  aspect-ratio: 9 / 16;
   height: 100%;
+  width: auto;
+  max-width: 95vw;
   max-height: 760px;
+  margin: 0 auto;
   display: grid;
   place-items: center;
 }
@@ -205,7 +210,9 @@ body {
 .media {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* The card is now 9:16, same as the video, so contain fills it exactly
+     and can never crop. */
+  object-fit: contain;
   display: block;
 }
 
