@@ -41,14 +41,16 @@
         showError(err, '');
         const fd = new FormData(form);
         try {
-          await jsonFetch('/api/login', {
+          const data = await jsonFetch('/api/login', {
             method: 'POST',
             body: JSON.stringify({
               username: fd.get('username'),
               password: fd.get('password'),
             }),
           });
-          window.location.href = '/';
+          // Creators (VAs) land on the upload page; admins on the feed.
+          window.location.href =
+            data && data.user && data.user.isCreator ? '/creator.html' : '/';
         } catch (e2) {
           showError(err, e2.message);
         }

@@ -132,6 +132,39 @@
       </form>
     </section>
 
+    <!-- ---------- rejection reason sheet ---------- -->
+    <div class="sheet-backdrop" id="reject-backdrop" hidden></div>
+    <section
+      class="sheet reject-sheet"
+      id="reject-sheet"
+      hidden
+      aria-label="Rejection reason"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="sheet-grip" aria-hidden="true"></div>
+      <header class="sheet-head">
+        <h2>Why send it back?</h2>
+      </header>
+      <p class="reject-lede">The creator sees this so they know what to fix.</p>
+      <div class="reason-chips" id="reason-chips">
+        <button type="button" data-reason="Off-brand">Off-brand</button>
+        <button type="button" data-reason="Low quality">Low quality</button>
+        <button type="button" data-reason="Wrong message">Wrong message</button>
+        <button type="button" data-reason="Repetitive">Repetitive</button>
+        <button type="button" data-reason="Other">Other</button>
+      </div>
+      <textarea
+        id="reject-note"
+        rows="2"
+        maxlength="300"
+        placeholder="Add a note (optional)…"
+      ></textarea>
+      <button class="reject-skip" id="reject-skip" type="button">
+        Reject without a reason
+      </button>
+    </section>
+
     <!-- ---------- media editor ---------- -->
     <div class="editor" id="editor" hidden role="dialog" aria-modal="true" aria-label="Edit media">
       <button class="editor-close" id="editor-cancel" type="button" aria-label="Close editor">

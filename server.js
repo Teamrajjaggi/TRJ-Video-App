@@ -6,6 +6,7 @@ const fs = require('fs');
 const { pipeline } = require('stream/promises');
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const multer = require('multer');
 
 const {
   issueSessionCookie,
@@ -21,12 +22,18 @@ const {
   updateUsername,
   publicUser,
   bootstrapAdmin,
+  bootstrapCreator,
   isAdminUsername,
 } = require('./lib/users');
 const db = require('./lib/db');
 const { approveVideo, rejectVideo } = require('./lib/approve');
-const { syncFromDrive } = require('./lib/drive-sync');
-const { streamDriveFile, uploadFileToFolder } = require('./lib/drive-source');
+const { syncFromDrive, faststartDriveVideo } = require('./lib/drive-sync');
+const {
+  streamDriveFile,
+  uploadFileToFolder,
+  pendingFolderId,
+  kindFromMime,
+} = require('./lib/drive-source');
 const { moveFile } = require('./lib/drive-move');
 const { trimVideo } = require('./lib/edit-media');
 const { generateCaptionFor } = require('./lib/caption');
@@ -35,6 +42,12 @@ const app = express();
 // 20mb: cropped images arrive as base64 data URLs in the JSON body.
 app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
+
+// VA clip uploads. Stored to a temp file, then pushed to Drive Pending.
+const uploadTmp = multer({
+  dest: os.tmpdir(),
+  limits: { fileSize: 400 * 1024 * 1024 }, // 400 MB ceiling
+});
 
 // ---------- auth middleware ----------
 async function requireAuth(req, res, next) {
@@ -73,7 +86,14 @@ async function requireAdminOrToken(req, res, next) {
 }
 
 // ---------- static gate ----------
-const PROTECTED_PAGES = new Set(['/', '/index.html', '/profile', '/profile.html']);
+const PROTECTED_PAGES = new Set([
+  '/',
+  '/index.html',
+  '/profile',
+  '/profile.html',
+  '/creator',
+  '/creator.html',
+]);
 app.use((req, res, next) => {
   if (PROTECTED_PAGES.has(req.path)) {
     if (!readSession(req)) return res.redirect('/login.html');
@@ -149,7 +169,7 @@ app.get('/api/videos', requireAuth, async (req, res) => {
 
 // Approve / reject the single admin's verdict on a video.
 async function handleReview(req, res) {
-  const { videoId, verdict } = req.body || {};
+  const { videoId, verdict, reason, note } = req.body || {};
   if (!videoId || !['like', 'dislike'].includes(verdict)) {
     return res.status(400).json({ error: 'videoId + verdict (like|dislike) required' });
   }
@@ -172,9 +192,16 @@ async function handleReview(req, res) {
       return res.json({ ok: true, status: 'approved', driveMove });
     }
 
-    // dislike → reject
+    // dislike → reject. The reason (one-tap chip) is shown back to the
+    // creator so they know what to fix; note is an optional free-text add.
     await db.banDriveId(video.drive_file_id);
-    await db.updateVideoStatus(video.id, 'rejected', { reviewed_at: reviewedAt });
+    await db.updateVideoStatus(video.id, 'rejected', {
+      reviewed_at: reviewedAt,
+      rejection_reason:
+        typeof reason === 'string' && reason.trim() ? reason.trim() : null,
+      rejection_note:
+        typeof note === 'string' && note.trim() ? note.trim() : null,
+    });
     let driveMove = null;
     try {
       driveMove = await rejectVideo(video);
@@ -329,6 +356,70 @@ app.get('/api/videos/:id/stream', requireAuth, async (req, res) => {
   }
 });
 
+// ---------- creator (VA) ----------
+
+// Every clip this user has uploaded, newest first — pending, approved,
+// rejected (with the reason), or posted.
+app.get('/api/creator/videos', requireAuth, async (req, res) => {
+  try {
+    res.json(await db.listVideosByUploader(req.user.id));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Upload a clip straight into the review pipeline: store it in Drive's
+// Pending folder, fast-start it, and register the row tagged to this user.
+app.post(
+  '/api/creator/upload',
+  requireAuth,
+  uploadTmp.single('file'),
+  async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'no file uploaded' });
+    const tmpPath = req.file.path;
+    try {
+      const kind = kindFromMime(req.file.mimetype);
+      if (!kind) {
+        return res.status(400).json({ error: 'only video or image files are accepted' });
+      }
+      const folder = pendingFolderId();
+      if (!folder) {
+        return res.status(503).json({ error: 'DRIVE_PENDING_FOLDER_ID not set' });
+      }
+      const name = req.file.originalname || `upload-${Date.now()}`;
+      const uploaded = await uploadFileToFolder(
+        tmpPath,
+        name,
+        req.file.mimetype,
+        folder,
+      );
+      // Fast-start videos so they play instantly in the feed. Best-effort.
+      if (kind === 'video') {
+        try {
+          await faststartDriveVideo(uploaded.id, req.file.mimetype);
+        } catch (e) {
+          console.warn('[upload] fast-start skipped:', e.message);
+        }
+      }
+      const row = await db.upsertVideoFromDrive({
+        driveFileId: uploaded.id,
+        filename: name,
+        mimeType: req.file.mimetype,
+        kind,
+        thumbnailUrl: null,
+        streamUrl: null,
+        uploadedBy: req.user.id,
+      });
+      res.json({ ok: true, video: row });
+    } catch (e) {
+      console.warn('[upload] failed:', e.message);
+      res.status(500).json({ error: e.message });
+    } finally {
+      fs.promises.unlink(tmpPath).catch(() => {});
+    }
+  },
+);
+
 // ---------- admin actions (admin session OR bearer token) ----------
 
 // Approved videos. ?filter=unposted (default) | posted | all
@@ -444,6 +535,20 @@ app.delete('/api/admin/videos/:id', requireAdminOrToken, async (req, res) => {
   }
 });
 
+// ---------- error handler ----------
+// Catches multer upload errors (e.g. file too large) and anything else
+// that reaches here, so the client gets JSON instead of an HTML stack.
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  if (err instanceof multer.MulterError) {
+    const msg =
+      err.code === 'LIMIT_FILE_SIZE' ? 'file too large (max 400 MB)' : err.message;
+    return res.status(400).json({ error: msg });
+  }
+  console.warn('[error]', err.message);
+  res.status(500).json({ error: err.message || 'server error' });
+});
+
 // ---------- Drive auto-sync ----------
 let driveSyncInflight = false;
 async function autoSyncDrive(reason) {
@@ -493,6 +598,21 @@ async function start() {
   } else if (resynced) {
     console.log('[startup] Admin password resynced from ADMIN_PASSWORD env.');
   }
+
+  try {
+    const creator = await bootstrapCreator();
+    if (creator.bootstrappedPassword) {
+      console.log('\n========================================================');
+      console.log(`  Creator account "${creator.user.username}" bootstrapped.`);
+      console.log(`  password: ${creator.bootstrappedPassword}`);
+      console.log('========================================================\n');
+    } else if (creator.resynced) {
+      console.log('[startup] Creator password resynced from CREATOR_PASSWORD env.');
+    }
+  } catch (e) {
+    console.warn('[startup] creator bootstrap skipped:', e.message);
+  }
+
   if (!process.env.INVITE_CODE) {
     console.warn(
       '[startup] INVITE_CODE is not set — /api/signup will reject all requests until you set it.',

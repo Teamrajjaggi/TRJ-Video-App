@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="TRJ Upload" />
+    <title>Upload · TRJ Review</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <style>
+      :root {
+        --bg: #09090b;
+        --surface: #1c1c22;
+        --surface-2: #2a2a32;
+        --border: rgba(255, 255, 255, 0.09);
+        --border-strong: rgba(255, 255, 255, 0.16);
+        --text: #fafafa;
+        --muted: #9a9aa6;
+        --accent: #6366f1;
+        --approve: #22c55e;
+        --reject: #f43f5e;
+        --warn: #f59e0b;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        background: radial-gradient(120% 60% at 50% 0%, #18181f 0%, var(--bg) 60%);
+        color: var(--text);
+        font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
+        min-height: 100vh;
+        padding: max(18px, env(safe-area-inset-top)) 16px 48px;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        width: min(680px, 100%);
+        margin: 0 auto;
+      }
+      .page-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .brand {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+      }
+      .brand-mark {
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        font-size: 1.15rem;
+      }
+      .brand-sub {
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+      .head-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .ghost {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .ghost:hover {
+        background: var(--surface-2);
+      }
+      h1 {
+        font-size: 1.5rem;
+        letter-spacing: -0.02em;
+      }
+      .lede {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 3px 0 18px;
+      }
+      /* upload card */
+      .uploader {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 20px;
+        margin-bottom: 26px;
+      }
+      .drop {
+        border: 1.5px dashed var(--border-strong);
+        border-radius: 14px;
+        padding: 26px 16px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background 0.15s ease;
+      }
+      .drop:hover,
+      .drop.over {
+        border-color: var(--accent);
+        background: rgba(99, 102, 241, 0.07);
+      }
+      .drop svg {
+        width: 34px;
+        height: 34px;
+        stroke: var(--muted);
+        fill: none;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .drop-main {
+        font-weight: 600;
+        margin-top: 8px;
+      }
+      .drop-sub {
+        color: var(--muted);
+        font-size: 0.8rem;
+        margin-top: 2px;
+      }
+      .picked {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 11px 13px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        font-size: 0.85rem;
+      }
+      .picked .name {
+        flex: 1;
+        word-break: break-all;
+        font-weight: 600;
+      }
+      .picked .size {
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+      .btn {
+        width: 100%;
+        margin-top: 14px;
+        height: 46px;
+        border: none;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn:hover {
+        background: #4f46e5;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .progress {
+        margin-top: 12px;
+        height: 7px;
+        background: var(--bg);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .progress span {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--accent);
+        transition: width 0.2s ease;
+      }
+      .note {
+        margin-top: 9px;
+        font-size: 0.82rem;
+        min-height: 1em;
+      }
+      .note.ok {
+        color: var(--approve);
+      }
+      .note.err {
+        color: var(--reject);
+      }
+      /* list */
+      .section-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .rows {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 76px 1fr;
+        gap: 13px;
+        padding: 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+      }
+      .row video {
+        width: 76px;
+        height: 108px;
+        object-fit: cover;
+        border-radius: 9px;
+        background: #000;
+      }
+      .row .thumb-fallback {
+        width: 76px;
+        height: 108px;
+        border-radius: 9px;
+        background: var(--surface-2);
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 0.7rem;
+      }
+      .info-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        word-break: break-word;
+      }
+      .info-sub {
+        color: var(--muted);
+        font-size: 0.76rem;
+        margin-top: 2px;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.66rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 3px 9px;
+        border-radius: 999px;
+        margin-top: 7px;
+      }
+      .badge.pending {
+        background: rgba(245, 158, 11, 0.16);
+        color: var(--warn);
+      }
+      .badge.approved,
+      .badge.posted {
+        background: rgba(34, 197, 94, 0.16);
+        color: var(--approve);
+      }
+      .badge.rejected {
+        background: rgba(244, 63, 94, 0.16);
+        color: var(--reject);
+      }
+      .reject-box {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: rgba(244, 63, 94, 0.08);
+        border: 1px solid rgba(244, 63, 94, 0.25);
+        border-radius: 9px;
+        font-size: 0.8rem;
+      }
+      .reject-box .why {
+        font-weight: 600;
+        color: #fca5b5;
+      }
+      .reject-box .note-txt {
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .empty {
+        text-align: center;
+        color: var(--muted);
+        padding: 36px 0;
+        font-size: 0.88rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="page-head">
+        <div class="brand">
+          <span class="brand-mark">TRJ</span>
+          <span class="brand-sub">Upload</span>
+        </div>
+        <div class="head-actions">
+          <a class="ghost" href="/profile.html">Profile</a>
+          <button class="ghost" id="logout" type="button">Log out</button>
+        </div>
+      </header>
+
+      <h1>Upload a clip</h1>
+      <p class="lede">
+        Drop a video or image here. The reviewer sees it next, and you'll see
+        the verdict — including why, if it's sent back — in the list below.
+      </p>
+
+      <div class="uploader">
+        <label class="drop" id="drop">
+          <input id="file" type="file" accept="video/*,image/*" hidden />
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+          </svg>
+          <div class="drop-main">Tap to choose a file</div>
+          <div class="drop-sub">Video or image · up to 400 MB</div>
+        </label>
+        <div class="picked" id="picked" hidden>
+          <span class="name" id="picked-name"></span>
+          <span class="size" id="picked-size"></span>
+        </div>
+        <button class="btn" id="send" type="button" disabled>Upload</button>
+        <div class="progress" id="progress" hidden><span id="bar"></span></div>
+        <div class="note" id="note"></div>
+      </div>
+
+      <div class="section-title">Your uploads</div>
+      <div class="rows" id="rows">
+        <div class="empty">Loading…</div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { jsonFetch, getMe } from '/auth.js';
+
+      const me = await getMe();
+      if (!me) location.href = '/login.html';
+
+      const fileInput = document.getElementById('file');
+      const drop = document.getElementById('drop');
+      const picked = document.getElementById('picked');
+      const pickedName = document.getElementById('picked-name');
+      const pickedSize = document.getElementById('picked-size');
+      const sendBtn = document.getElementById('send');
+      const progress = document.getElementById('progress');
+      const bar = document.getElementById('bar');
+      const note = document.getElementById('note');
+      const rowsEl = document.getElementById('rows');
+
+      let chosen = null;
+
+      document.getElementById('logout').addEventListener('click', async () => {
+        try {
+          await jsonFetch('/api/logout', { method: 'POST' });
+        } catch {
+          /* ignore */
+        }
+        location.href = '/login.html';
+      });
+
+      function fmtSize(bytes) {
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+        return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+      }
+
+      function setFile(f) {
+        chosen = f || null;
+        if (chosen) {
+          pickedName.textContent = chosen.name;
+          pickedSize.textContent = fmtSize(chosen.size);
+          picked.hidden = false;
+          sendBtn.disabled = false;
+        } else {
+          picked.hidden = true;
+          sendBtn.disabled = true;
+        }
+      }
+
+      fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+
+      // Drag-and-drop on desktop.
+      ['dragover', 'dragenter'].forEach((ev) =>
+        drop.addEventListener(ev, (e) => {
+          e.preventDefault();
+          drop.classList.add('over');
+        }),
+      );
+      ['dragleave', 'drop'].forEach((ev) =>
+        drop.addEventListener(ev, (e) => {
+          e.preventDefault();
+          drop.classList.remove('over');
+        }),
+      );
+      drop.addEventListener('drop', (e) => {
+        const f = e.dataTransfer.files[0];
+        if (f) setFile(f);
+      });
+
+      sendBtn.addEventListener('click', () => {
+        if (!chosen) return;
+        sendBtn.disabled = true;
+        note.textContent = '';
+        note.className = 'note';
+        progress.hidden = false;
+        bar.style.width = '0%';
+
+        const fd = new FormData();
+        fd.append('file', chosen);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/creator/upload');
+        xhr.withCredentials = true;
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            bar.style.width = (e.loaded / e.total) * 100 + '%';
+          }
+        });
+        xhr.addEventListener('load', () => {
+          progress.hidden = true;
+          let data = {};
+          try {
+            data = JSON.parse(xhr.responseText);
+          } catch {
+            /* ignore */
+          }
+          if (xhr.status >= 200 && xhr.status < 300) {
+            note.textContent = 'Uploaded — it’s in the review queue.';
+            note.className = 'note ok';
+            setFile(null);
+            fileInput.value = '';
+            load();
+          } else {
+            note.textContent = 'Failed: ' + (data.error || 'HTTP ' + xhr.status);
+            note.className = 'note err';
+            sendBtn.disabled = false;
+          }
+        });
+        xhr.addEventListener('error', () => {
+          progress.hidden = true;
+          note.textContent = 'Upload failed — check your connection.';
+          note.className = 'note err';
+          sendBtn.disabled = false;
+        });
+        xhr.send(fd);
+      });
+
+      function cleanName(name) {
+        return (name || 'Untitled').replace(/\.[a-z0-9]+$/i, '');
+      }
+
+      const STATUS_LABEL = {
+        pending: 'Awaiting review',
+        approved: 'Approved',
+        rejected: 'Sent back',
+        posted: 'Posted',
+      };
+
+      async function load() {
+        let items = [];
+        try {
+          items = await jsonFetch('/api/creator/videos');
+        } catch (e) {
+          rowsEl.innerHTML = '<div class="empty">Failed to load: ' + e.message + '</div>';
+          return;
+        }
+        if (!items.length) {
+          rowsEl.innerHTML = '<div class="empty">Nothing uploaded yet.</div>';
+          return;
+        }
+        rowsEl.innerHTML = '';
+        for (const v of items) {
+          const row = document.createElement('div');
+          row.className = 'row';
+
+          if (v.kind === 'image' || (v.mime_type || '').startsWith('image/')) {
+            const img = document.createElement('img');
+            img.className = 'thumb-fallback';
+            img.style.objectFit = 'cover';
+            img.src = `/api/videos/${encodeURIComponent(v.id)}/stream`;
+            row.appendChild(img);
+          } else {
+            const vid = document.createElement('video');
+            vid.src = `/api/videos/${encodeURIComponent(v.id)}/stream`;
+            vid.muted = true;
+            vid.playsInline = true;
+            vid.preload = 'metadata';
+            row.appendChild(vid);
+          }
+
+          const main = document.createElement('div');
+
+          const title = document.createElement('div');
+          title.className = 'info-title';
+          title.textContent = cleanName(v.filename);
+          main.appendChild(title);
+
+          const sub = document.createElement('div');
+          sub.className = 'info-sub';
+          sub.textContent =
+            'uploaded ' + new Date(v.created_at).toLocaleString();
+          main.appendChild(sub);
+
+          const badge = document.createElement('span');
+          badge.className = 'badge ' + v.status;
+          badge.textContent = STATUS_LABEL[v.status] || v.status;
+          main.appendChild(badge);
+
+          if (v.status === 'rejected' && (v.rejection_reason || v.rejection_note)) {
+            const box = document.createElement('div');
+            box.className = 'reject-box';
+            if (v.rejection_reason) {
+              const why = document.createElement('div');
+              why.className = 'why';
+              why.textContent = 'Reason: ' + v.rejection_reason;
+              box.appendChild(why);
+            }
+            if (v.rejection_note) {
+              const nt = document.createElement('div');
+              nt.className = 'note-txt';
+              nt.textContent = v.rejection_note;
+              box.appendChild(nt);
+            }
+            main.appendChild(box);
+          }
+
+          row.appendChild(main);
+          rowsEl.appendChild(row);
+        }
+      }
+
+      load();
+    </script>
+  </body>
+</html>

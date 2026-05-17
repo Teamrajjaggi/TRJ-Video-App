@@ -580,6 +580,70 @@ body {
   stroke-linejoin: round;
 }
 
+/* ---------- rejection reason sheet ---------- */
+.reject-lede {
+  padding: 0 18px 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.reason-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 18px 4px;
+}
+.reason-chips button {
+  padding: 11px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.reason-chips button:hover,
+.reason-chips button:active {
+  background: var(--reject);
+  border-color: var(--reject);
+  color: #fff;
+}
+#reject-note {
+  margin: 12px 18px 0;
+  resize: none;
+  padding: 11px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+#reject-note:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+#reject-note::placeholder {
+  color: var(--muted);
+}
+.reject-skip {
+  margin: 12px 18px calc(env(safe-area-inset-bottom) + 16px);
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.reject-skip:hover {
+  color: var(--text);
+}
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed;

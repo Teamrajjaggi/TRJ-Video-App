@@ -34,6 +34,11 @@ const trimReadout = document.getElementById('trim-readout');
 const trimPlayhead = document.getElementById('trim-playhead');
 const cropHint = document.getElementById('crop-hint');
 const toastEl = document.getElementById('toast');
+const rejectSheet = document.getElementById('reject-sheet');
+const rejectBackdrop = document.getElementById('reject-backdrop');
+const rejectChips = document.getElementById('reason-chips');
+const rejectNote = document.getElementById('reject-note');
+const rejectSkip = document.getElementById('reject-skip');
 
 const SWIPE_THRESHOLD = 96; // px of horizontal travel to commit a verdict
 const SKIP_THRESHOLD = 90; // px of vertical travel to skip ("review later")
@@ -48,6 +53,11 @@ async function bootstrap() {
   me = await getMe();
   if (!me) {
     location.href = '/login.html';
+    return;
+  }
+  // The review feed is admin-only; creators (VAs) get the upload page.
+  if (me.isCreator) {
+    location.href = '/creator.html';
     return;
   }
   logoutBtn.addEventListener('click', async () => {
@@ -68,6 +78,13 @@ async function bootstrap() {
   editBtn.addEventListener('click', openEditor);
   editorCancel.addEventListener('click', closeEditor);
   editorSave.addEventListener('click', submitEdit);
+  // Rejection-reason sheet: a chip (or skip / backdrop) sends the verdict.
+  rejectChips.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-reason]');
+    if (btn) finishReject(btn.dataset.reason);
+  });
+  rejectSkip.addEventListener('click', () => finishReject(null));
+  rejectBackdrop.addEventListener('click', () => finishReject(null));
   // Trim controls live on persistent elements — wire them once.
   attachTrimHandle(trimStartH, 'start');
   attachTrimHandle(trimEndH, 'end');
@@ -284,13 +301,48 @@ function commit(card, video, verdict) {
   if (stamp) stamp.style.opacity = 1;
   card.style.transform = `translate(${dir * 140}%, 60px) rotate(${dir * 22}deg)`;
 
-  submitVerdict(video, verdict);
+  if (verdict === 'like') {
+    submitVerdict(video, 'like');
+  } else {
+    // Reject: the card flies off now; the reason sheet captures why and
+    // sends the verdict when a chip is tapped (or skipped).
+    openRejectSheet(video);
+  }
 
   setTimeout(() => {
     index += 1;
     busy = false;
     renderDeck();
   }, 340);
+}
+
+// ---------- rejection reason ----------
+let pendingRejectVideo = null;
+
+function openRejectSheet(video) {
+  pendingRejectVideo = video;
+  rejectNote.value = '';
+  rejectBackdrop.hidden = false;
+  rejectSheet.hidden = false;
+  requestAnimationFrame(() => rejectSheet.classList.add('sheet--open'));
+}
+
+function closeRejectSheet() {
+  rejectSheet.classList.remove('sheet--open');
+  rejectBackdrop.hidden = true;
+  setTimeout(() => {
+    rejectSheet.hidden = true;
+  }, 260);
+}
+
+// Send the deferred reject verdict with the chosen reason (or none).
+function finishReject(reason) {
+  const video = pendingRejectVideo;
+  pendingRejectVideo = null;
+  closeRejectSheet();
+  if (!video) return;
+  const note = rejectNote.value.trim();
+  submitVerdict(video, 'dislike', reason || null, note || null);
 }
 
 // Skip without a verdict: the video stays pending and moves to the back of
@@ -315,11 +367,11 @@ function skip(card, dir) {
   }, 320);
 }
 
-async function submitVerdict(video, verdict) {
+async function submitVerdict(video, verdict, reason, note) {
   try {
     await jsonFetch('/api/review', {
       method: 'POST',
-      body: JSON.stringify({ videoId: video.id, verdict }),
+      body: JSON.stringify({ videoId: video.id, verdict, reason, note }),
     });
     toast(verdict === 'like' ? 'Approved' : 'Rejected', verdict === 'like' ? 'ok' : 'bad');
   } catch (e) {
@@ -335,6 +387,10 @@ function onKey(e) {
   }
   if (!sheet.hidden) {
     if (e.key === 'Escape') closeSheet();
+    return;
+  }
+  if (!rejectSheet.hidden) {
+    if (e.key === 'Escape') finishReject(null);
     return;
   }
   if (busy || !current()) return;
