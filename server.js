@@ -31,6 +31,7 @@ const { syncFromDrive, faststartDriveVideo } = require('./lib/drive-sync');
 const {
   streamDriveFile,
   uploadFileToFolder,
+  renameFile,
   pendingFolderId,
   kindFromMime,
 } = require('./lib/drive-source');
@@ -426,6 +427,54 @@ app.post(
     }
   },
 );
+
+// Rename a clip. Writes the new name to Drive and the DB row; the
+// original file extension is preserved so playback is unaffected.
+app.patch('/api/creator/videos/:id/rename', requireAuth, async (req, res) => {
+  try {
+    const video = await db.getVideo(req.params.id);
+    if (!video) return res.status(404).json({ error: 'video not found' });
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    if (!name) return res.status(400).json({ error: 'name required' });
+    if (name.length > 120) {
+      return res.status(400).json({ error: 'name too long (max 120 characters)' });
+    }
+    if (/[\\/]/.test(name)) {
+      return res.status(400).json({ error: 'name cannot contain slashes' });
+    }
+    const ext = path.extname(video.filename || '');
+    const finalName =
+      ext && !name.toLowerCase().endsWith(ext.toLowerCase()) ? name + ext : name;
+    if (video.drive_file_id) await renameFile(video.drive_file_id, finalName);
+    const row = await db.updateFilename(video.id, finalName);
+    res.json({ ok: true, video: row });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// The VA's posting checklist: approved clips not yet posted.
+app.get('/api/creator/to-post', requireAuth, async (req, res) => {
+  try {
+    res.json(await db.listVideos({ status: 'approved', posted: false }));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// VA checks a clip off the list once it's live on social.
+app.post('/api/creator/videos/:id/posted', requireAuth, async (req, res) => {
+  try {
+    const video = await db.getVideo(req.params.id);
+    if (!video) return res.status(404).json({ error: 'video not found' });
+    const updated = await db.updateVideoStatus(video.id, 'posted', {
+      posted_at: new Date().toISOString(),
+    });
+    res.json({ ok: true, video: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ---------- admin actions (admin session OR bearer token) ----------
 
