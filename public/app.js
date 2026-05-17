@@ -747,3 +747,8 @@ bootstrap().catch((err) => {
   loadingEl.hidden = true;
   toast(`Error: ${err.message}`, 'bad');
 });
+
+// Register the service worker so the app is installable on Android / Chrome.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}

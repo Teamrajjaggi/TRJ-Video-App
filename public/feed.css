@@ -296,14 +296,10 @@ body {
   stroke-linejoin: round;
 }
 
+/* The asset-id / filename is hidden in the review feed — it's only shown
+   on the Approved-queue page next to the caption. */
 .card-foot {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 36px 18px 16px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.78), transparent);
-  pointer-events: none;
+  display: none;
 }
 .card-title {
   font-size: 13px;
