@@ -123,16 +123,23 @@
         border-color: var(--accent);
         background: rgba(99, 102, 241, 0.07);
       }
-      .drop svg {
-        display: block;
-        width: 34px;
-        height: 34px;
-        stroke: var(--muted);
+      .drop-icon {
+        display: grid;
+        place-items: center;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: rgba(99, 102, 241, 0.14);
+        margin-bottom: 12px;
+      }
+      .drop-icon svg {
+        width: 26px;
+        height: 26px;
         fill: none;
-        stroke-width: 1.8;
+        stroke: var(--accent);
+        stroke-width: 2;
         stroke-linecap: round;
         stroke-linejoin: round;
-        overflow: visible;
       }
       .drop-main {
         font-weight: 600;
@@ -327,9 +334,13 @@
       <div class="uploader">
         <label class="drop" id="drop">
           <input id="file" type="file" accept="video/*,image/*" hidden />
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-          </svg>
+          <span class="drop-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 17V5" />
+              <path d="M7 10l5-5 5 5" />
+              <path d="M5 19h14" />
+            </svg>
+          </span>
           <div class="drop-main">Tap to choose a file</div>
           <div class="drop-sub">Video or image · up to 400 MB</div>
         </label>
