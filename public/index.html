@@ -132,36 +132,33 @@
       </form>
     </section>
 
-    <!-- ---------- rejection reason sheet ---------- -->
-    <div class="sheet-backdrop" id="reject-backdrop" hidden></div>
+    <!-- ---------- review feedback sheet ---------- -->
+    <div class="sheet-backdrop" id="feedback-backdrop" hidden></div>
     <section
-      class="sheet reject-sheet"
-      id="reject-sheet"
+      class="sheet feedback-sheet"
+      id="feedback-sheet"
       hidden
-      aria-label="Rejection reason"
+      aria-label="Review feedback"
       role="dialog"
       aria-modal="true"
     >
       <div class="sheet-grip" aria-hidden="true"></div>
       <header class="sheet-head">
-        <h2>Why send it back?</h2>
+        <h2 id="feedback-title">Feedback</h2>
       </header>
-      <p class="reject-lede">The creator sees this so they know what to fix.</p>
-      <div class="reason-chips" id="reason-chips">
-        <button type="button" data-reason="Off-brand">Off-brand</button>
-        <button type="button" data-reason="Low quality">Low quality</button>
-        <button type="button" data-reason="Wrong message">Wrong message</button>
-        <button type="button" data-reason="Repetitive">Repetitive</button>
-        <button type="button" data-reason="Other">Other</button>
-      </div>
+      <p class="feedback-lede" id="feedback-lede">The creator sees this.</p>
+      <div class="reason-chips" id="feedback-chips"></div>
       <textarea
-        id="reject-note"
+        id="feedback-note"
         rows="2"
         maxlength="300"
         placeholder="Add a note (optional)…"
       ></textarea>
-      <button class="reject-skip" id="reject-skip" type="button">
-        Reject without a reason
+      <button class="feedback-send" id="feedback-send" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" />
+        </svg>
+        <span id="feedback-send-label">Send</span>
       </button>
     </section>
 

@@ -180,7 +180,14 @@ async function handleReview(req, res) {
     const reviewedAt = new Date().toISOString();
 
     if (verdict === 'like') {
-      await db.updateVideoStatus(video.id, 'approved', { reviewed_at: reviewedAt });
+      // The reviewer can note what worked; the creator sees it.
+      await db.updateVideoStatus(video.id, 'approved', {
+        reviewed_at: reviewedAt,
+        approval_reason:
+          typeof reason === 'string' && reason.trim() ? reason.trim() : null,
+        approval_note:
+          typeof note === 'string' && note.trim() ? note.trim() : null,
+      });
       let driveMove = null;
       try {
         driveMove = await approveVideo(video);

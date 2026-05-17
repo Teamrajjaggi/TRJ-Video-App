@@ -34,11 +34,27 @@ const trimReadout = document.getElementById('trim-readout');
 const trimPlayhead = document.getElementById('trim-playhead');
 const cropHint = document.getElementById('crop-hint');
 const toastEl = document.getElementById('toast');
-const rejectSheet = document.getElementById('reject-sheet');
-const rejectBackdrop = document.getElementById('reject-backdrop');
-const rejectChips = document.getElementById('reason-chips');
-const rejectNote = document.getElementById('reject-note');
-const rejectSkip = document.getElementById('reject-skip');
+const feedbackSheet = document.getElementById('feedback-sheet');
+const feedbackBackdrop = document.getElementById('feedback-backdrop');
+const feedbackTitle = document.getElementById('feedback-title');
+const feedbackLede = document.getElementById('feedback-lede');
+const feedbackChips = document.getElementById('feedback-chips');
+const feedbackNote = document.getElementById('feedback-note');
+const feedbackSend = document.getElementById('feedback-send');
+
+// Per-verdict copy + quick-pick chips for the feedback sheet.
+const FEEDBACK = {
+  like: {
+    title: 'Nice — what worked?',
+    lede: 'Tell the creator what to do more of.',
+    chips: ['Great hook', 'On-brand', 'Good energy', 'Clear message', 'Strong CTA'],
+  },
+  dislike: {
+    title: 'Why send it back?',
+    lede: 'Tell the creator what to fix.',
+    chips: ['Off-brand', 'Low quality', 'Wrong message', 'Repetitive', 'Other'],
+  },
+};
 
 const SWIPE_THRESHOLD = 96; // px of horizontal travel to commit a verdict
 const SKIP_THRESHOLD = 90; // px of vertical travel to skip ("review later")
@@ -78,13 +94,9 @@ async function bootstrap() {
   editBtn.addEventListener('click', openEditor);
   editorCancel.addEventListener('click', closeEditor);
   editorSave.addEventListener('click', submitEdit);
-  // Rejection-reason sheet: a chip (or skip / backdrop) sends the verdict.
-  rejectChips.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-reason]');
-    if (btn) finishReject(btn.dataset.reason);
-  });
-  rejectSkip.addEventListener('click', () => finishReject(null));
-  rejectBackdrop.addEventListener('click', () => finishReject(null));
+  // Feedback sheet: tap a chip to select, then Send. Backdrop also sends.
+  feedbackSend.addEventListener('click', sendFeedback);
+  feedbackBackdrop.addEventListener('click', sendFeedback);
   // Trim controls live on persistent elements — wire them once.
   attachTrimHandle(trimStartH, 'start');
   attachTrimHandle(trimEndH, 'end');
@@ -301,13 +313,9 @@ function commit(card, video, verdict) {
   if (stamp) stamp.style.opacity = 1;
   card.style.transform = `translate(${dir * 140}%, 60px) rotate(${dir * 22}deg)`;
 
-  if (verdict === 'like') {
-    submitVerdict(video, 'like');
-  } else {
-    // Reject: the card flies off now; the reason sheet captures why and
-    // sends the verdict when a chip is tapped (or skipped).
-    openRejectSheet(video);
-  }
+  // The card flies off now; the feedback sheet captures what worked / what
+  // to fix and sends the verdict when Send (or the backdrop) is tapped.
+  openFeedbackSheet(video, verdict);
 
   setTimeout(() => {
     index += 1;
@@ -316,33 +324,57 @@ function commit(card, video, verdict) {
   }, 340);
 }
 
-// ---------- rejection reason ----------
-let pendingRejectVideo = null;
+// ---------- review feedback ----------
+// { video, verdict, reason } for the verdict awaiting a feedback send.
+let pendingFeedback = null;
 
-function openRejectSheet(video) {
-  pendingRejectVideo = video;
-  rejectNote.value = '';
-  rejectBackdrop.hidden = false;
-  rejectSheet.hidden = false;
-  requestAnimationFrame(() => rejectSheet.classList.add('sheet--open'));
+function openFeedbackSheet(video, verdict) {
+  const cfg = FEEDBACK[verdict];
+  pendingFeedback = { video, verdict, reason: null };
+  feedbackSheet.dataset.verdict = verdict;
+  feedbackTitle.textContent = cfg.title;
+  feedbackLede.textContent = cfg.lede;
+  feedbackNote.value = '';
+  feedbackChips.innerHTML = '';
+  for (const label of cfg.chips) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.textContent = label;
+    chip.addEventListener('click', () => {
+      const wasSelected = chip.classList.contains('selected');
+      feedbackChips
+        .querySelectorAll('button')
+        .forEach((b) => b.classList.remove('selected'));
+      if (wasSelected) {
+        pendingFeedback.reason = null;
+      } else {
+        chip.classList.add('selected');
+        pendingFeedback.reason = label;
+      }
+    });
+    feedbackChips.appendChild(chip);
+  }
+  feedbackBackdrop.hidden = false;
+  feedbackSheet.hidden = false;
+  requestAnimationFrame(() => feedbackSheet.classList.add('sheet--open'));
 }
 
-function closeRejectSheet() {
-  rejectSheet.classList.remove('sheet--open');
-  rejectBackdrop.hidden = true;
+function closeFeedbackSheet() {
+  feedbackSheet.classList.remove('sheet--open');
+  feedbackBackdrop.hidden = true;
   setTimeout(() => {
-    rejectSheet.hidden = true;
+    feedbackSheet.hidden = true;
   }, 260);
 }
 
-// Send the deferred reject verdict with the chosen reason (or none).
-function finishReject(reason) {
-  const video = pendingRejectVideo;
-  pendingRejectVideo = null;
-  closeRejectSheet();
-  if (!video) return;
-  const note = rejectNote.value.trim();
-  submitVerdict(video, 'dislike', reason || null, note || null);
+// Send the deferred verdict with whatever reason/note is entered.
+function sendFeedback() {
+  const pf = pendingFeedback;
+  pendingFeedback = null;
+  closeFeedbackSheet();
+  if (!pf) return;
+  const note = feedbackNote.value.trim();
+  submitVerdict(pf.video, pf.verdict, pf.reason || null, note || null);
 }
 
 // Skip without a verdict: the video stays pending and moves to the back of
@@ -389,8 +421,8 @@ function onKey(e) {
     if (e.key === 'Escape') closeSheet();
     return;
   }
-  if (!rejectSheet.hidden) {
-    if (e.key === 'Escape') finishReject(null);
+  if (!feedbackSheet.hidden) {
+    if (e.key === 'Escape') sendFeedback();
     return;
   }
   if (busy || !current()) return;

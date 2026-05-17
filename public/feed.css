@@ -580,8 +580,8 @@ body {
   stroke-linejoin: round;
 }
 
-/* ---------- rejection reason sheet ---------- */
-.reject-lede {
+/* ---------- review feedback sheet ---------- */
+.feedback-lede {
   padding: 0 18px 4px;
   font-size: 13px;
   color: var(--muted);
@@ -602,15 +602,20 @@ body {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s var(--ease);
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
 }
-.reason-chips button:hover,
-.reason-chips button:active {
+/* a chip is tap-to-select; the verdict tints the chosen one */
+.feedback-sheet[data-verdict='like'] .reason-chips button.selected {
+  background: var(--approve);
+  border-color: var(--approve);
+  color: #04130a;
+}
+.feedback-sheet[data-verdict='dislike'] .reason-chips button.selected {
   background: var(--reject);
   border-color: var(--reject);
   color: #fff;
 }
-#reject-note {
+#feedback-note {
   margin: 12px 18px 0;
   resize: none;
   padding: 11px 13px;
@@ -621,27 +626,45 @@ body {
   font: inherit;
   font-size: 14px;
 }
-#reject-note:focus {
+#feedback-note:focus {
   outline: none;
   border-color: var(--accent);
 }
-#reject-note::placeholder {
+#feedback-note::placeholder {
   color: var(--muted);
 }
-.reject-skip {
-  margin: 12px 18px calc(env(safe-area-inset-bottom) + 16px);
-  height: 44px;
+.feedback-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 18px calc(env(safe-area-inset-bottom) + 16px);
+  height: 50px;
   border: none;
   border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
+  background: var(--accent);
+  color: #fff;
   font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
+  transition: background 0.16s var(--ease);
 }
-.reject-skip:hover {
-  color: var(--text);
+.feedback-send:hover {
+  background: #4f46e5;
+}
+.feedback-send:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.feedback-send svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* ---------- toast ---------- */
