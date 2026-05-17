@@ -108,6 +108,9 @@
         margin-bottom: 26px;
       }
       .drop {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         border: 1.5px dashed var(--border-strong);
         border-radius: 14px;
         padding: 26px 16px;
@@ -121,6 +124,7 @@
         background: rgba(99, 102, 241, 0.07);
       }
       .drop svg {
+        display: block;
         width: 34px;
         height: 34px;
         stroke: var(--muted);
@@ -128,6 +132,7 @@
         stroke-width: 1.8;
         stroke-linecap: round;
         stroke-linejoin: round;
+        overflow: visible;
       }
       .drop-main {
         font-weight: 600;
