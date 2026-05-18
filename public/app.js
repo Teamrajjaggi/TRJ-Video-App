@@ -104,6 +104,31 @@ async function bootstrap() {
   document.addEventListener('keydown', onKey);
 
   await loadQueue();
+  // Auto-load newly-uploaded clips without a manual refresh.
+  setInterval(pollNewVideos, 60000);
+}
+
+// Pull in clips uploaded since the feed loaded. New ones are appended to
+// the back of the queue so the card being reviewed is never disturbed.
+async function pollNewVideos() {
+  if (busy) return;
+  let fresh;
+  try {
+    fresh = await jsonFetch('/api/videos');
+  } catch {
+    return;
+  }
+  const known = new Set(queue.map((v) => v.id));
+  const additions = fresh.filter((v) => !known.has(v.id));
+  if (!additions.length) return;
+  const wasEmpty = !current();
+  queue.push(...additions);
+  if (wasEmpty) {
+    renderDeck();
+  } else {
+    progressEl.textContent = `${index + 1} of ${queue.length}`;
+  }
+  toast(`${additions.length} new clip${additions.length > 1 ? 's' : ''} added`, 'ok');
 }
 
 async function loadQueue() {
@@ -170,7 +195,8 @@ function buildCard(video, isCurrent) {
     media.loop = true;
     media.muted = !soundOn;
     media.playsInline = true;
-    media.preload = 'metadata';
+    // Preload fully so the next card is buffered before you swipe to it.
+    media.preload = 'auto';
     // Play-triangle overlay tracks real playback. 'playing' fires once
     // frames actually render; 'pause' when stopped. The dimmed peek-behind
     // card never plays, so keep the overlay off there.

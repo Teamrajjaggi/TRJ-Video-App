@@ -28,6 +28,7 @@ const {
 const db = require('./lib/db');
 const { approveVideo, rejectVideo } = require('./lib/approve');
 const { syncFromDrive, faststartDriveVideo } = require('./lib/drive-sync');
+const { purgeOldRejected } = require('./lib/purge');
 const {
   streamDriveFile,
   uploadFileToFolder,
@@ -637,8 +638,28 @@ function scheduleDriveSync() {
   console.log(`[drive-sync] auto-syncing every ${minutes} min`);
 }
 
-// TODO(phase2): trash purger — periodically delete Drive files that have
-// been sitting in DRIVE_TRASH_FOLDER_ID for more than TRASH_RETENTION_DAYS.
+// Trash purger: deletes rejected clips (Drive file + DB row) once they've
+// aged past TRASH_RETENTION_DAYS, so storage and the dashboard stay clean.
+function schedulePurge() {
+  const days = parseInt(process.env.TRASH_RETENTION_DAYS ?? '14', 10);
+  if (!days || days < 1) {
+    console.log('[purge] auto-delete disabled (TRASH_RETENTION_DAYS=0)');
+    return;
+  }
+  const run = async () => {
+    try {
+      const r = await purgeOldRejected();
+      if (r.ok && r.removed) {
+        console.log(`[purge] removed ${r.removed} rejected clip(s) older than ${days}d`);
+      }
+    } catch (e) {
+      console.warn('[purge] run failed:', e.message);
+    }
+  };
+  setTimeout(run, 20000); // shortly after boot
+  setInterval(run, 24 * 60 * 60 * 1000); // daily
+  console.log(`[purge] rejected clips auto-delete after ${days} days`);
+}
 
 // ---------- startup ----------
 async function start() {
@@ -679,6 +700,7 @@ async function start() {
   app.listen(PORT, () => {
     console.log(`Video review portal running on http://localhost:${PORT}`);
     scheduleDriveSync();
+    schedulePurge();
   });
 }
 
