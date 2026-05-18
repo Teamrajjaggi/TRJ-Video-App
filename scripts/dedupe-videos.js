@@ -11,7 +11,6 @@ const APPLY = process.argv.includes('--apply');
 
 const { createClient } = require('@supabase/supabase-js');
 const db = require('../lib/db');
-const { deleteFile } = require('../lib/drive-source');
 const { deleteFromStream } = require('../lib/cloudflare-stream');
 
 // Dedupe key: drop the extension and a trailing " (N)" copy suffix that
@@ -73,6 +72,16 @@ async function main() {
 
   console.log(`\nRemoving ${toDelete.length} duplicate row(s)...`);
   for (const v of toDelete) {
+    // Ban the drive id FIRST — that's what makes the dedupe stick. The
+    // duplicate file stays in Drive, but every future sync skips it, so
+    // the row is never re-created.
+    if (v.drive_file_id) {
+      try {
+        await db.banDriveId(v.drive_file_id);
+      } catch (e) {
+        console.warn(`  ban ${v.filename}: ${e.message}`);
+      }
+    }
     if (v.stream_uid) {
       try {
         await deleteFromStream(v.stream_uid);
@@ -80,17 +89,10 @@ async function main() {
         console.warn(`  stream ${v.filename}: ${e.message}`);
       }
     }
-    if (v.drive_file_id) {
-      try {
-        await deleteFile(v.drive_file_id);
-      } catch (e) {
-        console.warn(`  drive ${v.filename}: ${e.message}`);
-      }
-    }
     await db.deleteVideo(v.id);
     console.log(`  removed ${v.filename}`);
   }
-  console.log('\nDedupe complete.');
+  console.log('\nDedupe complete — duplicate drive ids banned, will not re-import.');
 }
 
 main().catch((e) => {
