@@ -39,6 +39,7 @@ const {
 const { moveFile } = require('./lib/drive-move');
 const { trimVideo } = require('./lib/edit-media');
 const { generateCaptionFor } = require('./lib/caption');
+const { pushToStream } = require('./lib/cloudflare-stream');
 
 const app = express();
 // 20mb: cropped images arrive as base64 data URLs in the JSON body.
@@ -343,6 +344,12 @@ app.get('/api/videos/:id/stream', requireAuth, async (req, res) => {
     const video = await db.getVideo(req.params.id);
     if (!video) return res.status(404).json({ error: 'video not found' });
 
+    // Once the clip is on Cloudflare's CDN, hand playback off there —
+    // the video bytes never touch this server.
+    if (video.stream_playback_url) {
+      return res.redirect(302, video.stream_playback_url);
+    }
+
     const driveRes = await streamDriveFile(video.drive_file_id, req.headers.range);
     res.status(driveRes.status || 200);
     res.setHeader('Content-Type', video.mime_type || 'application/octet-stream');
@@ -419,6 +426,8 @@ app.post(
         streamUrl: null,
         uploadedBy: req.user.id,
       });
+      // Copy the clip to Cloudflare's CDN in the background.
+      if (kind === 'video') pushToStream(row.id);
       res.json({ ok: true, video: row });
     } catch (e) {
       console.warn('[upload] failed:', e.message);
