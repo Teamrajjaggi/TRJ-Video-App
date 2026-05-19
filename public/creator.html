@@ -502,7 +502,7 @@
         <div class="post-empty">Loading…</div>
       </div>
 
-      <div class="section-title section-gap">Your uploads</div>
+      <div class="section-title section-gap">All clips</div>
       <div class="rows" id="rows">
         <div class="empty">Loading…</div>
       </div>
@@ -510,9 +510,11 @@
 
     <script type="module">
       import { jsonFetch, getMe } from '/auth.js';
+      import { mountNotifications } from '/notifications.js';
 
       const me = await getMe();
       if (!me) location.href = '/login.html';
+      else mountNotifications(document.querySelector('.head-actions'));
 
       const fileInput = document.getElementById('file');
       const drop = document.getElementById('drop');

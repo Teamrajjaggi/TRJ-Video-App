@@ -40,6 +40,7 @@ const { moveFile } = require('./lib/drive-move');
 const { trimVideo } = require('./lib/edit-media');
 const { generateCaptionFor } = require('./lib/caption');
 const { pushToStream } = require('./lib/cloudflare-stream');
+const { notify, notifyByRole } = require('./lib/notify');
 
 const app = express();
 // 20mb: cropped images arrive as base64 data URLs in the JSON body.
@@ -199,6 +200,15 @@ async function handleReview(req, res) {
       }
       // Generate the social caption in the background — don't block the swipe.
       generateCaptionFor(video.id);
+      // Tell the uploader their clip was approved.
+      const approvedNote = {
+        type: 'review',
+        title: 'Clip approved ✅',
+        body: `"${video.filename}" was approved.`,
+        videoId: video.id,
+      };
+      if (video.uploaded_by) notify(video.uploaded_by, approvedNote);
+      else notifyByRole('creator', approvedNote);
       return res.json({ ok: true, status: 'approved', driveMove });
     }
 
@@ -218,6 +228,19 @@ async function handleReview(req, res) {
     } catch (e) {
       console.warn('[review] Drive move to Trash failed:', e.message);
     }
+    // Tell the uploader their clip was sent back, with the reason.
+    const cleanReason =
+      typeof reason === 'string' && reason.trim() ? reason.trim() : null;
+    const rejectedNote = {
+      type: 'review',
+      title: 'Clip sent back ↩️',
+      body: cleanReason
+        ? `"${video.filename}" — ${cleanReason}`
+        : `"${video.filename}" was sent back.`,
+      videoId: video.id,
+    };
+    if (video.uploaded_by) notify(video.uploaded_by, rejectedNote);
+    else notifyByRole('creator', rejectedNote);
     return res.json({ ok: true, status: 'rejected', driveMove });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -374,11 +397,12 @@ app.get('/api/videos/:id/stream', requireAuth, async (req, res) => {
 
 // ---------- creator (VA) ----------
 
-// Every clip this user has uploaded, newest first — pending, approved,
-// rejected (with the reason), or posted.
+// Every clip in the system, newest first — pending, approved, rejected
+// (with the reason), or posted. The VA is the content manager, so they
+// see all clips, not only the ones they uploaded through the app.
 app.get('/api/creator/videos', requireAuth, async (req, res) => {
   try {
-    res.json(await db.listVideosByUploader(req.user.id));
+    res.json(await db.listAllVideos());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -428,6 +452,13 @@ app.post(
       });
       // Copy the clip to Cloudflare's CDN in the background.
       if (kind === 'video') pushToStream(row.id);
+      // Tell the admin a new clip is waiting.
+      notifyByRole('admin', {
+        type: 'upload',
+        title: 'New clip uploaded 🎬',
+        body: `${name} is ready to review.`,
+        videoId: row.id,
+      });
       res.json({ ok: true, video: row });
     } catch (e) {
       console.warn('[upload] failed:', e.message);
@@ -480,7 +511,64 @@ app.post('/api/creator/videos/:id/posted', requireAuth, async (req, res) => {
     const updated = await db.updateVideoStatus(video.id, 'posted', {
       posted_at: new Date().toISOString(),
     });
+    // Tell the admin the clip is confirmed posted.
+    notifyByRole('admin', {
+      type: 'posted',
+      title: 'Clip marked as posted 📣',
+      body: `"${video.filename}" is now live.`,
+      videoId: video.id,
+    });
     res.json({ ok: true, video: updated });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ---------- notifications & web push ----------
+
+// The VAPID public key the browser needs to subscribe to push.
+app.get('/api/push/key', (req, res) => {
+  res.json({ key: process.env.VAPID_PUBLIC_KEY || null });
+});
+
+// Register this device's push subscription for the logged-in user.
+app.post('/api/push/subscribe', requireAuth, async (req, res) => {
+  try {
+    const sub = req.body;
+    if (!sub || !sub.endpoint) {
+      return res.status(400).json({ error: 'invalid subscription' });
+    }
+    await db.savePushSubscription(req.user.id, sub);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/push/unsubscribe', requireAuth, async (req, res) => {
+  try {
+    const { endpoint } = req.body || {};
+    if (endpoint) await db.deletePushSubscription(endpoint);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// The bell list for the logged-in user.
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  try {
+    const items = await db.listNotifications(req.user.id);
+    res.json({ items, unread: items.filter((n) => !n.read).length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/notifications/read', requireAuth, async (req, res) => {
+  try {
+    await db.markNotificationsRead(req.user.id);
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

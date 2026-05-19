@@ -1,6 +1,7 @@
 // Swipe-to-review feed. Consumes raw video rows from /api/videos.
 // Swipe right = approve (like), swipe left = reject (dislike).
 import { jsonFetch, getMe } from '/auth.js';
+import { mountNotifications } from '/notifications.js';
 
 const deck = document.getElementById('deck');
 const tpl = document.getElementById('card-tpl');
@@ -76,6 +77,7 @@ async function bootstrap() {
     location.href = '/creator.html';
     return;
   }
+  mountNotifications(document.querySelector('.header-actions'));
   logoutBtn.addEventListener('click', async () => {
     try {
       await jsonFetch('/api/logout', { method: 'POST' });
