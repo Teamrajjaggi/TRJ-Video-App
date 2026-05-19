@@ -1,7 +1,7 @@
 {
-  "name": "TRJ Video Review",
-  "short_name": "TRJ Review",
-  "description": "Review and approve video clips for Team Raj Jaggi.",
+  "name": "Shuffl",
+  "short_name": "Shuffl",
+  "description": "Review, caption, and ship social video clips.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

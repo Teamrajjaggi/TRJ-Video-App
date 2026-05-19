@@ -15,7 +15,7 @@ self.addEventListener('push', (event) => {
   } catch {
     /* non-JSON payload — ignore */
   }
-  const title = data.title || 'TRJ Review';
+  const title = data.title || 'Shuffl';
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',

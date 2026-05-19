@@ -10,7 +10,7 @@
   <!-- play mark -->
   <path d="M214 176 L342 256 L214 336 Z" fill="#ffffff"/>
   <!-- wordmark -->
-  <text x="256" y="430" text-anchor="middle"
+  <text x="256" y="432" text-anchor="middle"
         font-family="Segoe UI, Helvetica, Arial, sans-serif"
-        font-size="74" font-weight="800" letter-spacing="2" fill="#ffffff">TRJ</text>
+        font-size="62" font-weight="800" letter-spacing="1" fill="#ffffff">Shuffl</text>
 </svg>
