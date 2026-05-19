@@ -27,7 +27,7 @@ const {
 } = require('./lib/users');
 const db = require('./lib/db');
 const { approveVideo, rejectVideo } = require('./lib/approve');
-const { syncFromDrive, faststartDriveVideo } = require('./lib/drive-sync');
+const { faststartDriveVideo } = require('./lib/drive-sync');
 const { purgeOldRejected } = require('./lib/purge');
 const {
   streamDriveFile,
@@ -667,15 +667,6 @@ app.delete('/api/admin/banned/:driveId', requireAdminOrToken, async (req, res) =
   }
 });
 
-app.post('/api/admin/sync-drive', requireAdminOrToken, async (req, res) => {
-  try {
-    const result = await syncFromDrive();
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // Hard-delete a video row. Does not delete the underlying Drive file —
 // use the reject flow for that.
 app.delete('/api/admin/videos/:id', requireAdminOrToken, async (req, res) => {
@@ -702,38 +693,6 @@ app.use((err, req, res, next) => {
   console.warn('[error]', err.message);
   res.status(500).json({ error: err.message || 'server error' });
 });
-
-// ---------- Drive auto-sync ----------
-let driveSyncInflight = false;
-async function autoSyncDrive(reason) {
-  if (driveSyncInflight) return;
-  driveSyncInflight = true;
-  try {
-    const result = await syncFromDrive();
-    if (result.ok) {
-      console.log(
-        `[drive-sync] ${reason}: ${result.added} new / ${result.skipped} skipped / ${result.errors} errors`,
-      );
-    } else if (result.error) {
-      console.warn(`[drive-sync] ${reason}: skipped — ${result.error}`);
-    }
-  } catch (e) {
-    console.warn(`[drive-sync] ${reason}: failed`, e.message);
-  } finally {
-    driveSyncInflight = false;
-  }
-}
-
-function scheduleDriveSync() {
-  const minutes = parseInt(process.env.DRIVE_SYNC_INTERVAL_MINUTES ?? '30', 10);
-  if (!minutes || minutes < 1) {
-    console.log('[drive-sync] auto-sync disabled (DRIVE_SYNC_INTERVAL_MINUTES=0)');
-    return;
-  }
-  setTimeout(() => autoSyncDrive('boot sync'), 2000);
-  setInterval(() => autoSyncDrive('scheduled'), minutes * 60 * 1000);
-  console.log(`[drive-sync] auto-syncing every ${minutes} min`);
-}
 
 // Trash purger: deletes rejected clips (Drive file + DB row) once they've
 // aged past TRASH_RETENTION_DAYS, so storage and the dashboard stay clean.
@@ -796,7 +755,6 @@ async function start() {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Video review portal running on http://localhost:${PORT}`);
-    scheduleDriveSync();
     schedulePurge();
   });
 }

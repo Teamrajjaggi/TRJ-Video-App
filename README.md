@@ -67,8 +67,7 @@ Create four Drive folders and share each with the service account's `client_emai
 | POST   | `/api/admin/approved/:id/posted`| admin+token | Mark posted (called by n8n)                            |
 | DELETE | `/api/admin/approved/:id`       | admin+token | Un-approve (status back to pending)                    |
 | GET    | `/api/admin/banned`             | admin+token | Banned drive_file_ids                                  |
-| DELETE | `/api/admin/banned/:driveId`    | admin+token | Unban (next sync will re-import)                       |
-| POST   | `/api/admin/sync-drive`         | admin+token | Manual sync trigger                                    |
+| DELETE | `/api/admin/banned/:driveId`    | admin+token | Unban a drive_file_id                                  |
 | DELETE | `/api/admin/videos/:id`         | admin+token | Hard-delete a video row                                |
 
 ## Phase 4 workflows

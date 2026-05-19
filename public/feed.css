@@ -127,14 +127,6 @@ body {
   opacity: 0.5;
   cursor: default;
 }
-#sync-btn.spinning svg {
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 /* ---------- stage / card deck ---------- */
 .stage {

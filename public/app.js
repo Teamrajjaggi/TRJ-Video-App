@@ -10,9 +10,7 @@ const emptyState = document.getElementById('empty-state');
 const actionBar = document.getElementById('action-bar');
 const progressEl = document.getElementById('progress');
 const commentBtn = document.getElementById('comment-btn');
-const syncBtn = document.getElementById('sync-btn');
 const logoutBtn = document.getElementById('logout-btn');
-const emptySync = document.getElementById('empty-sync');
 const sheet = document.getElementById('comment-sheet');
 const sheetBackdrop = document.getElementById('sheet-backdrop');
 const sheetClose = document.getElementById('sheet-close');
@@ -86,8 +84,6 @@ async function bootstrap() {
     }
     location.href = '/login.html';
   });
-  syncBtn.addEventListener('click', runSync);
-  emptySync.addEventListener('click', runSync);
   commentBtn.addEventListener('click', openSheet);
   sheetClose.addEventListener('click', closeSheet);
   sheetBackdrop.addEventListener('click', closeSheet);
@@ -464,26 +460,6 @@ function onKey(e) {
   } else if (e.key === ' ') {
     e.preventDefault();
     togglePlay(card);
-  }
-}
-
-// ---------- sync ----------
-async function runSync() {
-  syncBtn.disabled = true;
-  syncBtn.classList.add('spinning');
-  try {
-    const r = await jsonFetch('/api/admin/sync-drive', {
-      method: 'POST',
-      body: '{}',
-    });
-    if (r && r.ok) toast(`Synced — ${r.added} new`, r.added ? 'ok' : null);
-    else toast(`Sync: ${(r && r.error) || 'failed'}`, 'bad');
-    await loadQueue();
-  } catch (e) {
-    toast(`Sync failed: ${e.message}`, 'bad');
-  } finally {
-    syncBtn.disabled = false;
-    syncBtn.classList.remove('spinning');
   }
 }
 
