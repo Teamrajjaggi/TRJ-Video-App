@@ -79,7 +79,7 @@ body {
 }
 .brand-mark {
   font-size: 18px;
-  background: linear-gradient(120deg, #fff, #a5a5ff);
+  background: linear-gradient(120deg, #fff, #86efac);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -236,8 +236,8 @@ body {
 }
 .stamp-skip {
   left: 50%;
-  color: #a5b4fc;
-  border-color: #a5b4fc;
+  color: #86efac;
+  border-color: #86efac;
   transform: translateX(-50%) rotate(-3deg);
 }
 
