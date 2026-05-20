@@ -205,7 +205,7 @@ async function handleReview(req, res) {
       const approvedNote = {
         type: 'review',
         title: 'Clip approved ✅',
-        body: `"${video.filename}" was approved.`,
+        body: 'Your clip was approved.',
         videoId: video.id,
       };
       if (video.uploaded_by) notify(video.uploaded_by, approvedNote);
@@ -235,9 +235,7 @@ async function handleReview(req, res) {
     const rejectedNote = {
       type: 'review',
       title: 'Clip sent back ↩️',
-      body: cleanReason
-        ? `"${video.filename}" — ${cleanReason}`
-        : `"${video.filename}" was sent back.`,
+      body: cleanReason ? `Sent back — ${cleanReason}` : 'Your clip was sent back.',
       videoId: video.id,
     };
     if (video.uploaded_by) notify(video.uploaded_by, rejectedNote);
@@ -486,8 +484,8 @@ app.post(
       // Tell the admin a new clip is waiting.
       notifyByRole('admin', {
         type: 'upload',
-        title: 'New clip uploaded 🎬',
-        body: `${name} is ready to review.`,
+        title: 'New post 🎬',
+        body: 'A new clip is ready to review.',
         videoId: row.id,
       });
       res.json({ ok: true, video: row });
@@ -546,7 +544,7 @@ app.post('/api/creator/videos/:id/posted', requireAuth, async (req, res) => {
     notifyByRole('admin', {
       type: 'posted',
       title: 'Clip marked as posted 📣',
-      body: `"${video.filename}" is now live.`,
+      body: 'A clip is now live.',
       videoId: video.id,
     });
     res.json({ ok: true, video: updated });
