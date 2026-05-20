@@ -61,6 +61,10 @@ const SKIP_THRESHOLD = 90; // px of vertical travel to skip ("review later")
 let me = null;
 let queue = [];
 let index = 0;
+// Navigation moves (commit + skip). Tracked separately from `index` because
+// skip rotates the queue without advancing index, so the counter would
+// otherwise look stuck. Resets when the queue is reloaded.
+let moves = 0;
 let busy = false; // locked while a card animates out
 let soundOn = false; // session-wide unmute preference (starts muted for autoplay)
 
@@ -124,7 +128,7 @@ async function pollNewVideos() {
   if (wasEmpty) {
     renderDeck();
   } else {
-    progressEl.textContent = `${index + 1} of ${queue.length}`;
+    progressEl.textContent = `${Math.min(moves + 1, queue.length)} of ${queue.length}`;
   }
   toast(`${additions.length} new clip${additions.length > 1 ? 's' : ''} added`, 'ok');
 }
@@ -139,6 +143,7 @@ async function loadQueue() {
   }
   loadingEl.hidden = true;
   index = 0;
+  moves = 0;
   renderDeck();
 }
 
@@ -164,7 +169,7 @@ function renderDeck() {
   deck.appendChild(card);
   attachGestures(card, cur);
   playCard(card);
-  progressEl.textContent = `${index + 1} of ${queue.length}`;
+  progressEl.textContent = `${Math.min(moves + 1, queue.length)} of ${queue.length}`;
 }
 
 function cleanTitle(name) {
@@ -343,6 +348,7 @@ function commit(card, video, verdict) {
 
   setTimeout(() => {
     index += 1;
+    moves += 1;
     busy = false;
     renderDeck();
   }, 340);
@@ -416,6 +422,7 @@ function skip(card, dir) {
   queue.push(v);
   // If that was the last card, wrap to the front.
   if (index >= queue.length - 1) index = 0;
+  moves += 1;
   toast('Saved for later');
   setTimeout(() => {
     busy = false;
