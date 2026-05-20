@@ -1,4 +1,4 @@
-// Drop-in notifications: a bell button with an unread badge + dropdown
+﻿// Drop-in notifications: a bell button with an unread badge + dropdown
 // panel, plus Web Push subscription. Self-contained — injects its own
 // styles and registers the service worker.
 //
@@ -38,7 +38,7 @@ function injectStyles() {
   .trj-panel-head{display:flex;justify-content:space-between;
     align-items:center;padding:8px 8px 10px;font-weight:700;color:#fafafa;
     font-size:.95rem}
-  .trj-enable{border:none;background:#6366f1;color:#fff;border-radius:999px;
+  .trj-enable{border:none;background:#4ade80;color:#fff;border-radius:999px;
     padding:6px 11px;font-size:.72rem;font-weight:700;cursor:pointer}
   .trj-n{padding:10px;border-radius:10px}
   .trj-n+.trj-n{margin-top:2px}
