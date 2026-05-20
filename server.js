@@ -31,6 +31,7 @@ const { faststartDriveVideo } = require('./lib/drive-sync');
 const { purgeOldRejected } = require('./lib/purge');
 const {
   streamDriveFile,
+  getThumbnailLink,
   uploadFileToFolder,
   renameFile,
   pendingFolderId,
@@ -357,6 +358,36 @@ app.get('/api/videos/:id/comments', requireAuth, async (req, res) => {
     res.json(await db.listComments(req.params.id));
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Drive-rendered thumbnail. Redirects to Drive's CDN-hosted thumbnail at
+// the requested size (default 1600px) instead of proxying the original
+// file bytes through this server — orders of magnitude faster for large
+// images on Render's small instance. Falls back to the /stream proxy if
+// Drive hasn't rendered a thumbnail yet (fresh uploads take a few seconds).
+app.get('/api/videos/:id/thumb', requireAuth, async (req, res) => {
+  try {
+    const video = await db.getVideo(req.params.id);
+    if (!video) return res.status(404).json({ error: 'video not found' });
+    let link = null;
+    try {
+      link = await getThumbnailLink(video.drive_file_id);
+    } catch (e) {
+      console.warn('[thumb] Drive thumbnailLink lookup failed:', e.message);
+    }
+    if (!link) {
+      return res.redirect(302, `/api/videos/${encodeURIComponent(video.id)}/stream`);
+    }
+    // Drive thumbnails end with =sNNN (longest side in px). 1600 is Drive's
+    // maximum and looks great on phones; clamp aggressively just in case.
+    const size = Math.max(64, Math.min(parseInt(req.query.size, 10) || 1600, 1600));
+    link = link.replace(/=s\d+$/, `=s${size}`);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.redirect(302, link);
+  } catch (e) {
+    console.warn('[thumb] failed:', e.message);
+    if (!res.headersSent) res.status(500).json({ error: e.message });
   }
 });
 

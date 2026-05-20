@@ -128,7 +128,7 @@ async function pollNewVideos() {
   if (wasEmpty) {
     renderDeck();
   } else {
-    progressEl.textContent = `${Math.min(moves + 1, queue.length)} of ${queue.length}`;
+    progressEl.textContent = `${queue.length ? (moves % queue.length) + 1 : 0} of ${queue.length}`;
   }
   toast(`${additions.length} new clip${additions.length > 1 ? 's' : ''} added`, 'ok');
 }
@@ -169,7 +169,7 @@ function renderDeck() {
   deck.appendChild(card);
   attachGestures(card, cur);
   playCard(card);
-  progressEl.textContent = `${Math.min(moves + 1, queue.length)} of ${queue.length}`;
+  progressEl.textContent = `${queue.length ? (moves % queue.length) + 1 : 0} of ${queue.length}`;
 }
 
 function cleanTitle(name) {
@@ -184,17 +184,18 @@ function buildCard(video, isCurrent) {
 
   const wrap = node.querySelector('.media-wrap');
   const soundBtn = node.querySelector('.sound-btn');
-  const src = `/api/videos/${encodeURIComponent(video.id)}/stream`;
   let media;
 
   if (video.kind === 'image') {
     media = document.createElement('img');
-    media.src = src;
+    // Use Drive's CDN-hosted thumbnail instead of proxying the original
+    // bytes through this server — feed cards load in a fraction of the time.
+    media.src = `/api/videos/${encodeURIComponent(video.id)}/thumb?size=1600`;
     media.alt = cleanTitle(video.filename);
     soundBtn.hidden = true; // images have no audio
   } else {
     media = document.createElement('video');
-    media.src = src;
+    media.src = `/api/videos/${encodeURIComponent(video.id)}/stream`;
     media.loop = true;
     media.muted = !soundOn;
     media.playsInline = true;
