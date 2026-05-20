@@ -39,7 +39,7 @@ declare ws_id uuid;
 begin
   select id into ws_id from workspaces order by created_at limit 1;
   if ws_id is null then
-    insert into workspaces (name) values ('Team Raj Jaggi') returning id into ws_id;
+    insert into workspaces (name) values ('Default Workspace') returning id into ws_id;
   end if;
 
   update videos             set workspace_id = ws_id where workspace_id is null;

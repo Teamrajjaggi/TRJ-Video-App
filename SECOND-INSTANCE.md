@@ -15,6 +15,7 @@ Drive folders, and database — fully isolated from TRJ.
 - Google Drive Shared Drive + 4 folders
 - Render web service
 - VAPID keys (Web Push)
+- `ADMIN_API_TOKEN` + `SESSION_SECRET`
 
 ## Step 1 — Supabase project
 
@@ -59,15 +60,15 @@ not shared with TRJ. Fill in the bracketed values from the earlier steps.
 
 ```
 # Auth & secrets (this instance only)
-INVITE_CODE=shuffl123
-ADMIN_API_TOKEN=efcee42aec36d31d0600171e604e1e33402b2e3db266832080a38ee81ae0d795
-SESSION_SECRET=c4354b6e884d722c49bf66121bfb3c7265ffd9be7b2fdfaf5b1dd457964c153e
+INVITE_CODE=shuffl-tvt-invite
+ADMIN_API_TOKEN=7153d08429427b2059d979d5979ae10ab082cacfb33521aeb51ec51112640a51
+SESSION_SECRET=28a6b20cdd89c0c6b5f54f4d19906bbeff91e9d1185d39b8a53cd8083d4c64ba
 
 # Bootstrapped accounts
 ADMIN_USERNAME=TVTadmin
-ADMIN_PASSWORD=TVT123$
+ADMIN_PASSWORD=TVTadmin123$
 CREATOR_USERNAME=TVTuploads
-CREATOR_PASSWORD=$321TVT
+CREATOR_PASSWORD=TVTuploads123$
 
 # Supabase (Step 1)
 SUPABASE_URL=<paste Project URL>
@@ -83,18 +84,21 @@ DRIVE_POSTED_FOLDER_ID=<paste id>
 # Housekeeping
 TRASH_RETENTION_DAYS=14
 
-# Captions (Gemini)
+# Captions (Gemini) — reuse TRJ's key, or grab a new one from aistudio.google.com
 GEMINI_API_KEY=<reuse TRJ's, or a new key from aistudio.google.com>
 GEMINI_MODEL=gemini-2.5-flash
-CAPTION_CTA=📞 Call TVT at <their phone number>
+# Engagement-driven voice: end with a question or prompt that invites a
+# comment. No CTA appended — add CAPTION_CTA later if/when needed.
+CAPTION_BRAND_PROMPT=You write short, engaging social-media captions for short video clips posted to TikTok and Instagram Reels. Lean into curiosity and viewer engagement — end with a question or prompt that invites a comment (e.g. "Who do you think wins?", "What would you do?", "Which side are you on?"). The voice is energetic, modern, and confident — never corporate or hashtag-stuffed. Never include a phone number, "call us", or "DM us" — those are appended separately when needed.
+CAPTION_CTA=
 
 # Cloudflare Stream (reuse TRJ's account / token)
 CF_ACCOUNT_ID=174948c57ca93c4b3982d6215719c770
 CF_STREAM_TOKEN=<reuse TRJ's Stream:Edit token>
 
 # Web Push — new VAPID keys for this instance
-VAPID_PUBLIC_KEY=BN3amwwJbs73pUxk0rOsYaSL-wOa3kTb-HhbA7_yp-ziI1vfX6VE9MbRsye-r6tLc_q8OfuEAjqBoY1cHEKJypY
-VAPID_PRIVATE_KEY=jccOKMWjNbmWSkVRL4QQ2HKuantSzxK5mFKd81W80js
+VAPID_PUBLIC_KEY=BGTJZQK7C2w-s53UKkVlhNrcnGlJ6DXnbUR-829Lhw8r_I0Q7dsEdigRkANpoihLj8gA6AbfEB2s6BY-gmYiKLY
+VAPID_PRIVATE_KEY=KC2MqFAWAa4igM6RBFevHO5vvEFGLv8sdke3iTlFf0I
 VAPID_SUBJECT=mailto:<owner email>
 ```
 
@@ -111,9 +115,9 @@ Both accounts now exist in Supabase.
 
 ## Step 6 — Smoke test
 
-1. Open the `.onrender.com` URL → log in as **TVTadmin / TVT123$** → empty
+1. Open the `.onrender.com` URL → log in as **TVTadmin / TVTadmin123$** → empty
    feed ("All caught up").
-2. In an incognito window: log in as **TVTuploads / $321TVT** → upload a
+2. In an incognito window: log in as **TVTuploads / TVTuploads123$** → upload a
    short video.
 3. Back in the admin window → wait ≤60 s (auto-poll) → the clip appears →
    swipe right → caption generates → it shows up in the VA's "Ready to

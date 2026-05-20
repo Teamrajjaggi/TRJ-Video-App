@@ -1,6 +1,8 @@
-# Video Review Portal
+# Shuffl
 
 VA-driven video approval pipeline. A virtual assistant uploads candidate clips and images to a Google Drive folder; the admin reviews them in a TikTok-style feed; approved clips flow into an n8n workflow that auto-posts to TikTok and Instagram Reels.
+
+Single-tenant by design: each business gets its own deployment with its own Supabase project, Drive folders, and Render service. See [SECOND-INSTANCE.md](SECOND-INSTANCE.md) for the runbook to stand up a new instance.
 
 ## How it works
 

@@ -273,8 +273,8 @@ app.post('/api/review/edit', requireAuth, async (req, res) => {
     const extras = {};
 
     if (edit.type === 'trim') {
-      const inPath = path.join(os.tmpdir(), `trj-edit-in-${stamp}.mp4`);
-      editedPath = path.join(os.tmpdir(), `trj-edit-out-${stamp}.mp4`);
+      const inPath = path.join(os.tmpdir(), `shuffl-edit-in-${stamp}.mp4`);
+      editedPath = path.join(os.tmpdir(), `shuffl-edit-out-${stamp}.mp4`);
       const driveRes = await streamDriveFile(video.drive_file_id);
       await pipeline(driveRes.data, fs.createWriteStream(inPath));
       try {
@@ -291,7 +291,7 @@ app.post('/api/review/edit', requireAuth, async (req, res) => {
       if (!m) return res.status(400).json({ error: 'crop needs an image data URL' });
       editedMime = m[1];
       const ext = (editedMime.split('/')[1] || 'png').replace(/[^\w]/g, '');
-      editedPath = path.join(os.tmpdir(), `trj-edit-out-${stamp}.${ext}`);
+      editedPath = path.join(os.tmpdir(), `shuffl-edit-out-${stamp}.${ext}`);
       await fs.promises.writeFile(editedPath, Buffer.from(m[2], 'base64'));
       editedName = `${base}-cropped.${ext}`;
       if (edit.cropBox) extras.crop_box = edit.cropBox;
