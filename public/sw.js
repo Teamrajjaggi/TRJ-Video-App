@@ -1,4 +1,4 @@
-// Service worker. Exists so the app meets the PWA install criteria and
+﻿// Service worker. Exists so the app meets the PWA install criteria and
 // so it can receive Web Push notifications. No offline caching — this is
 // a live review tool, always online.
 self.addEventListener('install', () => self.skipWaiting());
@@ -19,8 +19,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',
-      icon: '/icon.svg',
-      badge: '/icon.svg',
+      icon: '/icon.jpg',
+      badge: '/icon.jpg',
       tag: data.videoId || undefined,
       data: { url: '/' },
     }),
