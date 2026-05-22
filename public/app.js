@@ -152,6 +152,9 @@ function current() {
 }
 
 function renderDeck() {
+  // Destroy any hls.js instances on the outgoing cards before clearing —
+  // otherwise they keep streaming segments in the background and leak.
+  deck.querySelectorAll('video').forEach((v) => VideoSource.detachVideo(v));
   deck.innerHTML = '';
   const cur = current();
   if (!cur) {
@@ -195,12 +198,15 @@ function buildCard(video, isCurrent) {
     soundBtn.hidden = true; // images have no audio
   } else {
     media = document.createElement('video');
-    media.src = `/api/videos/${encodeURIComponent(video.id)}/stream`;
     media.loop = true;
     media.muted = !soundOn;
     media.playsInline = true;
-    // Preload fully so the next card is buffered before you swipe to it.
-    media.preload = 'auto';
+    media.preload = isCurrent ? 'auto' : 'metadata';
+    // attachVideo wires HLS adaptive streaming (via hls.js / native) when
+    // the clip is on Cloudflare, with a poster frame for instant paint.
+    // Falls back to progressive MP4. Returns an hls.js instance stored on
+    // media._hls — renderDeck destroys it when the card is discarded.
+    VideoSource.attachVideo(media, video);
     // Play-triangle overlay tracks real playback. 'playing' fires once
     // frames actually render; 'pause' when stopped. The dimmed peek-behind
     // card never plays, so keep the overlay off there.

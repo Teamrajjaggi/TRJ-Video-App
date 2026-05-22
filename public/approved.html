@@ -266,6 +266,7 @@
       </div>
     </div>
 
+    <script src="/video-source.js?v=2"></script>
     <script type="module">
       import { jsonFetch, getMe } from '/auth.js';
 
@@ -453,11 +454,15 @@
           row.className = 'row' + (v.posted_at ? ' posted' : '');
 
           const vid = document.createElement('video');
-          vid.src = `/api/videos/${encodeURIComponent(v.id)}/stream`;
+          // preload=none + poster: instant thumbnail, video bytes load
+          // only on hover/play. controls makes it watchable full-size.
+          vid.preload = 'none';
+          vid.poster = VideoSource.posterSrc(v);
+          vid.src = VideoSource.videoSrc(v);
+          vid.controls = true;
           vid.muted = true;
           vid.playsInline = true;
           vid.loop = true;
-          vid.preload = 'metadata';
           vid.addEventListener('mouseenter', () => vid.play().catch(() => {}));
           vid.addEventListener('mouseleave', () => vid.pause());
           row.appendChild(vid);

@@ -508,6 +508,7 @@
       </div>
     </div>
 
+    <script src="/video-source.js?v=2"></script>
     <script type="module">
       import { jsonFetch, getMe } from '/auth.js';
       import { mountNotifications } from '/notifications.js';
@@ -751,14 +752,21 @@
             const img = document.createElement('img');
             img.className = 'thumb-fallback';
             img.style.objectFit = 'cover';
-            img.src = `/api/videos/${encodeURIComponent(v.id)}/stream`;
+            img.loading = 'lazy';
+            img.src = VideoSource.imageSrc(v);
             row.appendChild(img);
           } else {
             const vid = document.createElement('video');
-            vid.src = `/api/videos/${encodeURIComponent(v.id)}/stream`;
+            // preload=none + poster: the list shows an instant thumbnail
+            // and the video bytes only download when you hit play. Without
+            // this, every clip in the list streams at once and the page
+            // crawls. controls makes it actually watchable.
+            vid.preload = 'none';
+            vid.poster = VideoSource.posterSrc(v);
+            vid.src = VideoSource.videoSrc(v);
+            vid.controls = true;
             vid.muted = true;
             vid.playsInline = true;
-            vid.preload = 'metadata';
             row.appendChild(vid);
           }
 
@@ -805,14 +813,17 @@
           const img = document.createElement('img');
           img.className = 'thumb-fallback';
           img.style.objectFit = 'cover';
-          img.src = `/api/videos/${encodeURIComponent(v.id)}/stream`;
+          img.loading = 'lazy';
+          img.src = VideoSource.imageSrc(v);
           row.appendChild(img);
         } else {
           const vid = document.createElement('video');
-          vid.src = `/api/videos/${encodeURIComponent(v.id)}/stream`;
+          vid.preload = 'none';
+          vid.poster = VideoSource.posterSrc(v);
+          vid.src = VideoSource.videoSrc(v);
+          vid.controls = true;
           vid.muted = true;
           vid.playsInline = true;
-          vid.preload = 'metadata';
           row.appendChild(vid);
         }
 

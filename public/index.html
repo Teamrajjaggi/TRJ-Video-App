@@ -183,6 +183,10 @@
     <!-- ---------- toast ---------- -->
     <div class="toast" id="toast" role="status" hidden></div>
 
-    <script src="/app.js?v=2" type="module"></script>
+    <!-- hls.js: adaptive-bitrate playback for Cloudflare Stream HLS.
+         If this CDN fetch fails, video-source.js falls back to MP4. -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5/dist/hls.min.js"></script>
+    <script src="/video-source.js?v=2"></script>
+    <script src="/app.js?v=4" type="module"></script>
   </body>
 </html>
