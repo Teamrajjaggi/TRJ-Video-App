@@ -105,7 +105,37 @@
     }
   }
 
+  // Shared autoplay-on-scroll. A video registered here plays (muted) when
+  // it scrolls into view and pauses when it leaves — the TikTok-style
+  // feel for the review list pages. One IntersectionObserver per page.
+  let _io = null;
+  function _autoplayObserver() {
+    if (_io) return _io;
+    _io = new IntersectionObserver(
+      function (entries) {
+        for (let i = 0; i < entries.length; i++) {
+          const e = entries[i];
+          if (e.isIntersecting && e.intersectionRatio >= 0.6) {
+            e.target.play().catch(function () {});
+          } else {
+            e.target.pause();
+          }
+        }
+      },
+      { threshold: [0, 0.6] },
+    );
+    return _io;
+  }
+
+  // Register a <video> for scroll-triggered autoplay. The element should
+  // already be muted + loop + playsInline (browsers only autoplay muted
+  // video). Returns nothing.
+  function autoplayInView(videoEl) {
+    _autoplayObserver().observe(videoEl);
+  }
+
   global.VideoSource = {
-    videoSrc, posterSrc, imageSrc, cfThumb, hlsSrc, attachVideo, detachVideo,
+    videoSrc, posterSrc, imageSrc, cfThumb, hlsSrc,
+    attachVideo, detachVideo, autoplayInView,
   };
 })(window);
