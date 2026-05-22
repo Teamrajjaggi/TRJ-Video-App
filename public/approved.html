@@ -109,13 +109,22 @@
       .row.posted {
         opacity: 0.62;
       }
-      .row video {
+      .row .pv {
         width: 92px;
         height: 130px;
-        object-fit: cover;
         border-radius: 10px;
         background: #000;
+        position: relative;
+        overflow: hidden;
+        flex: none;
         cursor: pointer;
+      }
+      .row .pv video,
+      .row .pv img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
       }
       .info-title {
         font-weight: 600;
@@ -266,7 +275,7 @@
       </div>
     </div>
 
-    <script src="/video-source.js?v=4"></script>
+    <script src="/video-source.js?v=5"></script>
     <script type="module">
       import { jsonFetch, getMe } from '/auth.js';
 
@@ -453,21 +462,17 @@
           const row = document.createElement('div');
           row.className = 'row' + (v.posted_at ? ' posted' : '');
 
-          const vid = document.createElement('video');
-          // TikTok-style: poster paints instantly, autoplays muted + loop
-          // when scrolled into view. Tap to pause/resume.
-          vid.preload = 'metadata';
-          vid.poster = VideoSource.posterSrc(v);
-          vid.src = VideoSource.videoSrc(v);
-          vid.muted = true;
-          vid.playsInline = true;
-          vid.loop = true;
+          // TikTok-style: poster overlay paints instantly, autoplays
+          // muted + loop when scrolled into view, overlay lifts on first
+          // real frame. Tap to pause/resume.
+          const block = VideoSource.buildListVideo(v);
+          const vid = block._video;
           vid.addEventListener('click', () => {
             if (vid.paused) vid.play().catch(() => {});
             else vid.pause();
           });
           VideoSource.autoplayInView(vid);
-          row.appendChild(vid);
+          row.appendChild(block);
 
           const main = document.createElement('div');
 

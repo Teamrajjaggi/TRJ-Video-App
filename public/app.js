@@ -227,6 +227,11 @@ function buildCard(video, isCurrent) {
   }
   media.className = 'media';
   wrap.appendChild(media);
+  // Poster overlay — covers the load with the thumbnail until real video
+  // frames render, so there's no black flash (iOS Safari especially).
+  if (video.kind !== 'image') {
+    wrap.appendChild(VideoSource.posterOverlay(video, media));
+  }
 
   node.querySelector('.card-title').textContent = cleanTitle(video.filename);
   return node;

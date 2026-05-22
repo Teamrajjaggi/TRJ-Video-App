@@ -23,9 +23,11 @@
   }
 
   // Cloudflare-generated poster frame. ~1s in so it's not a black frame.
+  // height=1280 keeps the poster sharp enough that the hand-off to the
+  // full-res video is invisible.
   function cfThumb(streamUrl) {
     const base = cfBase(streamUrl);
-    return base ? base + '/thumbnails/thumbnail.jpg?time=1s&height=960' : null;
+    return base ? base + '/thumbnails/thumbnail.jpg?time=1s&height=1280' : null;
   }
 
   // Fastest playable source for a video row: the Cloudflare CDN URL when
@@ -52,57 +54,67 @@
     return '/api/videos/' + encodeURIComponent(v.id) + '/thumb?size=1280';
   }
 
-  // Cloudflare Stream HLS manifest — adaptive bitrate, starts at low
-  // quality instantly and ramps up. The "TikTok" delivery format.
-  function hlsSrc(streamUrl) {
-    const base = cfBase(streamUrl);
-    return base ? base + '/manifest/video.m3u8' : null;
-  }
-
-  // Attach the best playback source to a <video>. Priority:
-  //   1. Cloudflare HLS via hls.js   (Chrome/Firefox/Edge — adaptive)
-  //   2. Cloudflare HLS natively     (Safari/iOS — adaptive, no library)
-  //   3. Progressive MP4 / Drive proxy (fallback)
-  // Always sets a poster so the card looks loaded instantly.
-  // Returns the hls.js instance (or null) so the caller can destroy it
-  // when the element is removed — call detachVideo() for that.
+  // Attach playback source to a <video>. Uses the Cloudflare CDN MP4 at
+  // full source resolution — ONE quality. No adaptive "starts blurry then
+  // sharpens" ramp (which iOS Safari does when fed an HLS manifest). For
+  // short review clips on a CDN, single-quality MP4 is the right call.
   function attachVideo(videoEl, v) {
     videoEl.poster = posterSrc(v);
-    const hls = v && v.stream_playback_url ? hlsSrc(v.stream_playback_url) : null;
-
-    // Safari / iOS: native HLS, no library needed.
-    if (hls && videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-      videoEl.src = hls;
-      return null;
-    }
-    // Chrome / Firefox / Edge: hls.js if it loaded.
-    if (hls && global.Hls && global.Hls.isSupported()) {
-      const inst = new global.Hls({
-        capLevelToPlayerSize: true, // never fetch 4K for a phone-size player
-        maxBufferLength: 12,        // clips are short — don't over-buffer
-        startLevel: -1,             // auto: pick the right rung for the link
-      });
-      inst.loadSource(hls);
-      inst.attachMedia(videoEl);
-      videoEl._hls = inst;
-      return inst;
-    }
-    // No HLS available — progressive MP4 straight from the CDN.
     videoEl.src = videoSrc(v);
     return null;
   }
 
-  // Tear down an hls.js instance attached by attachVideo(). Safe to call
-  // on any <video> — no-ops if there's nothing attached.
+  // No-op kept so callers (app.js renderDeck) don't need changing —
+  // there are no hls.js instances to tear down anymore.
   function detachVideo(videoEl) {
-    if (videoEl && videoEl._hls) {
-      try {
-        videoEl._hls.destroy();
-      } catch (e) {
-        /* ignore */
-      }
-      videoEl._hls = null;
-    }
+    /* nothing to detach — playback is plain MP4 */
+  }
+
+  // A poster <img> that fills its (position:relative) parent and removes
+  // itself the moment the given <video> actually renders frames.
+  //
+  // Why an overlay instead of the native <video poster> attribute: iOS
+  // Safari dismisses the poster attribute as soon as play() is called —
+  // well before the first frame decodes — so the card flashes black for
+  // 1-3 seconds. This overlay stays put until the real 'playing' event,
+  // closing that gap on every browser.
+  function posterOverlay(v, videoEl) {
+    const img = document.createElement('img');
+    img.src = posterSrc(v);
+    img.alt = '';
+    img.decoding = 'async';
+    img.style.cssText =
+      'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;' +
+      'pointer-events:none;z-index:1;transition:opacity .2s;';
+    videoEl.addEventListener(
+      'playing',
+      function () {
+        img.style.opacity = '0';
+        setTimeout(function () {
+          img.remove();
+        }, 250);
+      },
+      { once: true },
+    );
+    return img;
+  }
+
+  // Build a list-page video preview: a position:relative wrapper (class
+  // "pv") holding the <video> plus a poster overlay. The <video> is
+  // exposed as wrapper._video so the caller can wire autoplay / clicks.
+  function buildListVideo(v) {
+    const wrap = document.createElement('div');
+    wrap.className = 'pv';
+    const video = document.createElement('video');
+    video.src = videoSrc(v);
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    wrap.appendChild(video);
+    wrap.appendChild(posterOverlay(v, video));
+    wrap._video = video;
+    return wrap;
   }
 
   // Shared autoplay-on-scroll. A video registered here plays (muted) when
@@ -135,7 +147,8 @@
   }
 
   global.VideoSource = {
-    videoSrc, posterSrc, imageSrc, cfThumb, hlsSrc,
+    videoSrc, posterSrc, imageSrc, cfThumb,
     attachVideo, detachVideo, autoplayInView,
+    posterOverlay, buildListVideo,
   };
 })(window);

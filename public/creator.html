@@ -238,12 +238,21 @@
         border: 1px solid var(--border);
         border-radius: 14px;
       }
-      .row video {
+      .row .pv {
         width: 76px;
         height: 108px;
-        object-fit: cover;
         border-radius: 9px;
         background: #000;
+        position: relative;
+        overflow: hidden;
+        flex: none;
+      }
+      .row .pv video,
+      .row .pv img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
       }
       .row .thumb-fallback {
         width: 76px;
@@ -508,7 +517,7 @@
       </div>
     </div>
 
-    <script src="/video-source.js?v=4"></script>
+    <script src="/video-source.js?v=5"></script>
     <script type="module">
       import { jsonFetch, getMe } from '/auth.js';
       import { mountNotifications } from '/notifications.js';
@@ -756,22 +765,18 @@
             img.src = VideoSource.imageSrc(v);
             row.appendChild(img);
           } else {
-            const vid = document.createElement('video');
-            // TikTok-style: poster paints instantly, metadata gives the
-            // first frame, and the clip autoplays (muted, looping) when it
-            // scrolls into view. Tap to pause/resume. No manual controls.
-            vid.preload = 'metadata';
-            vid.poster = VideoSource.posterSrc(v);
-            vid.src = VideoSource.videoSrc(v);
-            vid.muted = true;
-            vid.loop = true;
-            vid.playsInline = true;
+            // TikTok-style: poster overlay paints instantly, the clip
+            // autoplays (muted, looping) when it scrolls into view, and
+            // the overlay lifts only once real frames render. Tap to
+            // pause/resume.
+            const block = VideoSource.buildListVideo(v);
+            const vid = block._video;
             vid.addEventListener('click', () => {
               if (vid.paused) vid.play().catch(() => {});
               else vid.pause();
             });
             VideoSource.autoplayInView(vid);
-            row.appendChild(vid);
+            row.appendChild(block);
           }
 
           const main = document.createElement('div');
@@ -821,19 +826,14 @@
           img.src = VideoSource.imageSrc(v);
           row.appendChild(img);
         } else {
-          const vid = document.createElement('video');
-          vid.preload = 'metadata';
-          vid.poster = VideoSource.posterSrc(v);
-          vid.src = VideoSource.videoSrc(v);
-          vid.muted = true;
-          vid.loop = true;
-          vid.playsInline = true;
+          const block = VideoSource.buildListVideo(v);
+          const vid = block._video;
           vid.addEventListener('click', () => {
             if (vid.paused) vid.play().catch(() => {});
             else vid.pause();
           });
           VideoSource.autoplayInView(vid);
-          row.appendChild(vid);
+          row.appendChild(block);
         }
 
         const main = document.createElement('div');
