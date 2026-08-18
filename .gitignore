@@ -12,3 +12,8 @@ sa-key.json
 
 # drive sync state (regenerated locally)
 data/drive-sync.json
+
+# marketing site lead storage (regenerated locally)
+site/data/leads.jsonl
+site/data/lead-retry.jsonl
+site/dist/

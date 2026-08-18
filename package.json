@@ -6,7 +6,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "site": "node site/server.js",
+    "site:preview": "node site/scripts/build-preview.js"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",
