@@ -3,15 +3,16 @@
 const { brand, site, cinc } = require('../config');
 
 /**
- * Brand lockup. Uses the logo file when one is present, and falls back to a
- * typographic TRJ tile (navy T, red R, navy J) when it is not.
+ * Brand lockup. Renders the logo file when one is present under
+ * public/images/, and otherwise falls back to a navy TRJ monogram tile paired
+ * with the red wordmark from .brand-text.
  */
 function brandMark({ light = false } = {}) {
   const src = light ? brand.logoLight : brand.logo;
   if (src) {
     return `<img class="brand-logo${light ? ' brand-logo-light' : ''}" src="${esc(src)}" alt="${esc(brand.name)}" width="200" height="109">`;
   }
-  return '<span class="brand-mark" aria-hidden="true">T<span class="mark-r">R</span>J</span>';
+  return '<span class="brand-mark" aria-hidden="true">TRJ</span>';
 }
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };

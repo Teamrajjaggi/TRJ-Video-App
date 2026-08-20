@@ -83,7 +83,7 @@ No brokerage affiliation is shown anywhere on the site. `SITE_BROKERAGE` is empt
 
 ## Content to replace before launch
 
-- **Logo.** `public/images/logo.svg` and `logo-light.svg` (the knockout variant for the dark footer) are placeholders drawn from the brand marks. Drop the supplied artwork in as `logo.png` / `logo-light.png` and the header, footer, and preview pick it up automatically — `config.js` finds the first of `.svg`, `.png`, `.webp`, `.jpg`. Remove both files and the site falls back to a typographic TRJ tile.
+- **Logo.** The site currently renders a typographic fallback: a navy TRJ monogram tile beside the red TEAM RAJ JAGGI wordmark. Drop the real artwork at `public/images/logo.png` (and `logo-light.png`, a knockout variant for the dark footer) and the header, footer, and preview switch to it automatically — `config.js` picks up the first of `.svg`, `.png`, `.webp`, `.jpg`, no code change needed.
 - **Photography.** Drop real files in `public/images/` and set the `photo` field on team members and listings. Cards fall back to typographic tiles until then.
 - **Reviews.** `data/testimonials.js` holds representative reviews written from the team's public record. Swap in verified Google/Zillow/Yelp reviews with permission before launch.
 - **Listings.** `data/listings.js` is a display shelf, not an MLS feed. Live inventory comes from the IDX handoff.

@@ -134,12 +134,14 @@ p { margin: 0 0 1.1em; }
 
 .brand { display: flex; align-items: center; gap: .8rem; text-decoration: none; margin-right: auto; }
 .brand-mark {
-  width: 46px; height: 46px; flex: none; border-radius: 3px;
+  width: 48px; height: 48px; flex: none; border-radius: 4px;
   display: grid; place-items: center;
-  background: #fff; color: var(--ink); border: 2px solid var(--ink);
-  font-family: var(--serif); font-size: 1.05rem; letter-spacing: .04em; font-weight: 700;
+  background: var(--ink); color: #fff;
+  font-family: var(--sans); font-size: 1.02rem; letter-spacing: .02em; font-weight: 800;
 }
-.brand-mark .mark-r { color: var(--accent); }
+/* On navy the brand red drops below contrast, so the monogram stays white and
+   the red lives in the wordmark instead. */
+.site-footer .brand-mark { background: #fff; color: var(--ink); border: 0; }
 .brand-logo { height: 52px; width: auto; }
 .brand-has-logo { gap: 0; }
 .brand-has-logo .brand-text {
@@ -149,8 +151,8 @@ p { margin: 0 0 1.1em; }
 .site-footer .brand-logo { height: 74px; margin-bottom: 1rem; }
 .site-footer .brand-mark { border-color: #fff; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-.brand-name { font-family: var(--serif); font-size: 1.18rem; color: var(--ink); font-weight: 600; }
-.brand-sub { font-size: .68rem; text-transform: uppercase; letter-spacing: .18em; color: var(--muted); }
+.brand-name { font-family: var(--sans); font-size: 1.05rem; color: var(--accent); font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+.brand-sub { font-size: .66rem; text-transform: uppercase; letter-spacing: .16em; color: var(--ink-soft); font-weight: 600; }
 
 .site-nav ul { display: flex; gap: .35rem; list-style: none; margin: 0; padding: 0; }
 .nav-item { position: relative; }
@@ -457,7 +459,7 @@ p { margin: 0 0 1.1em; }
 .site-footer { background: #171b45; color: #a3a9c9; font-size: .93rem; padding-top: clamp(3rem, 6vw, 4.5rem); }
 .footer-grid { display: grid; gap: 2.5rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); padding-bottom: 3rem; }
 .footer-brand .brand-mark { margin-bottom: 1rem; }
-.footer-name { color: #fff; font-family: var(--serif); font-size: 1.15rem; margin-bottom: .3rem; }
+.footer-name { color: #fff; font-family: var(--sans); font-size: 1rem; font-weight: 800; margin-bottom: .3rem; }
 .footer-line { margin: 0 0 .35rem; }
 .footer-line a, .footer-col a { color: #a3a9c9; text-decoration: none; }
 .footer-line a:hover, .footer-col a:hover { color: var(--accent-soft); }
