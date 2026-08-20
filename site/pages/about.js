@@ -83,7 +83,7 @@ ${c.breadcrumb([{ label: 'Home', href: '/' }, { label: 'Team', href: '/team' }, 
     <div class="agent-detail-body">
       <p class="eyebrow">${esc(member.role)}</p>
       <h1>${esc(member.name)}</h1>
-      ${member.license ? `<p class="fine">${esc(member.license)} &middot; ${esc(brand.brokerage)}</p>` : `<p class="fine">${esc(brand.brokerage)}</p>`}
+      ${[member.license, brand.brokerage].filter(Boolean).length ? `<p class="fine">${[member.license, brand.brokerage].filter(Boolean).map(esc).join(' &middot; ')}</p>` : ''}
       ${member.bio.map((p) => `<p>${esc(p)}</p>`).join('')}
       ${member.specialties && member.specialties.length ? `<h2 class="h-sm">Specialties</h2><div class="chip-grid">${member.specialties.map((s) => `<span class="chip chip-static">${esc(s)}</span>`).join('')}</div>` : ''}
     </div>

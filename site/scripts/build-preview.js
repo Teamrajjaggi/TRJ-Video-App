@@ -57,6 +57,19 @@ for (const [route, render] of routes) {
   pages[route] = extract(render());
 }
 
+// Inline the logo files so the single-file preview is fully self-contained.
+function inlineLogos(html) {
+  return html.replace(/src="(\/images\/[^"]+\.svg)"/g, function (match, src) {
+    const file = path.join(__dirname, '..', 'public', src);
+    if (!fs.existsSync(file)) return match;
+    return 'src="data:image/svg+xml;base64,' + fs.readFileSync(file).toString('base64') + '"';
+  });
+}
+
+for (const route of Object.keys(pages)) {
+  pages[route].body = inlineLogos(pages[route].body);
+}
+
 const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
 const mainJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'main.js'), 'utf8');
 
@@ -132,13 +145,13 @@ const html = `<title>Team Raj Jaggi — Site Preview</title>
 ${css}
 #preview-bar {
   position: fixed; z-index: 200; left: 50%; bottom: 18px; transform: translateX(-50%);
-  background: #0d1b2a; color: #ff9099; font-family: var(--sans); font-size: .78rem;
+  background: #242a63; color: #ff8f97; font-family: var(--sans); font-size: .78rem;
   letter-spacing: .1em; text-transform: uppercase; padding: .6rem 1.1rem; border-radius: 100px;
   box-shadow: 0 12px 32px rgba(0,0,0,.35); pointer-events: none;
 }
 #preview-note {
   position: fixed; z-index: 201; left: 50%; bottom: 62px; transform: translateX(-50%) translateY(8px);
-  background: #c8102e; color: #fff; font-family: var(--sans); font-size: .85rem;
+  background: #d0202f; color: #fff; font-family: var(--sans); font-size: .85rem;
   padding: .7rem 1.1rem; border-radius: 4px; max-width: min(90vw, 460px); text-align: center;
   opacity: 0; transition: opacity .2s ease, transform .2s ease; pointer-events: none;
 }

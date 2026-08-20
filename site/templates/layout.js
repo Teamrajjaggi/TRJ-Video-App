@@ -2,8 +2,15 @@
 
 const { brand, site, cinc } = require('../config');
 
-/** TRJ wordmark tile: navy T, red R, navy J on white. */
-function brandMark() {
+/**
+ * Brand lockup. Uses the logo file when one is present, and falls back to a
+ * typographic TRJ tile (navy T, red R, navy J) when it is not.
+ */
+function brandMark({ light = false } = {}) {
+  const src = light ? brand.logoLight : brand.logo;
+  if (src) {
+    return `<img class="brand-logo${light ? ' brand-logo-light' : ''}" src="${esc(src)}" alt="${esc(brand.name)}" width="200" height="109">`;
+  }
   return '<span class="brand-mark" aria-hidden="true">T<span class="mark-r">R</span>J</span>';
 }
 
@@ -80,11 +87,11 @@ function header(currentPath) {
 </div>
 <header class="site-header" data-header>
   <div class="wrap header-inner">
-    <a class="brand" href="/">
+    <a class="brand${brand.logo ? ' brand-has-logo' : ''}" href="/">
       ${brandMark()}
       <span class="brand-text">
         <span class="brand-name">${esc(brand.name)}</span>
-        <span class="brand-sub">${esc(brand.brokerage)}</span>
+        <span class="brand-sub">${esc(brand.brokerage || brand.market + " Real Estate")}</span>
       </span>
     </a>
     <nav class="site-nav" aria-label="Main">
@@ -118,9 +125,9 @@ function footer() {
   return `<footer class="site-footer">
   <div class="wrap footer-grid">
     <div class="footer-brand">
-      ${brandMark()}
+      ${brandMark({ light: true })}
       <p class="footer-name">${esc(brand.legalName)}</p>
-      <p class="footer-line">${esc(brand.brokerage)}</p>
+      ${brand.brokerage ? `<p class="footer-line">${esc(brand.brokerage)}</p>` : ''}
       <p class="footer-line">${esc(brand.addressLine)}</p>
       <p class="footer-line"><a href="${esc(brand.phoneHref)}" data-call>${esc(brand.phone)}</a></p>
       <p class="footer-line"><a href="mailto:${esc(brand.email)}">${esc(brand.email)}</a></p>
@@ -159,7 +166,7 @@ function footer() {
   </div>
   <div class="wrap footer-legal">
     <p>*Guarantee terms are agreed in writing before listing. Seller and ${esc(brand.name)} must agree on price and timeline. Not every home qualifies. Full terms provided at the listing appointment.</p>
-    <p>&copy; ${year} ${esc(brand.legalName)}. All rights reserved. ${esc(brand.brokerage)}. Licensed real estate salespersons in the State of New York.</p>
+    <p>&copy; ${year} ${esc(brand.legalName)}. All rights reserved.${brand.brokerage ? ' ' + esc(brand.brokerage) + '.' : ''} Licensed real estate salespersons in the State of New York.</p>
     <p class="fair-housing"><span class="eho" aria-hidden="true">EHO</span> Equal Housing Opportunity. Information deemed reliable but not guaranteed. Listing data is provided for consumers' personal, non-commercial use.</p>
   </div>
 </footer>`;
@@ -182,9 +189,9 @@ function structuredData(extra) {
       addressCountry: 'US',
     },
     areaServed: brand.marketLong,
-    parentOrganization: { '@type': 'Organization', name: brand.brokerage },
     sameAs: Object.values(brand.social).filter(Boolean),
   };
+  if (brand.brokerage) org.parentOrganization = { '@type': 'Organization', name: brand.brokerage };
   const blocks = [org].concat(extra || []);
   return blocks.map((b) => `<script type="application/ld+json">${jsonScript(b)}</script>`).join('\n');
 }
@@ -215,7 +222,7 @@ function page(opts) {
     bodyClass = '',
   } = opts;
 
-  const fullTitle = title ? `${title} | ${brand.name}` : `${brand.name} | ${brand.brokerage}`;
+  const fullTitle = title ? `${title} | ${brand.name}` : `${brand.name} | ${brand.market} Real Estate`;
   const canonical = brand.baseUrl + (path === '/' ? '' : path);
 
   return `<!doctype html>
@@ -232,7 +239,7 @@ function page(opts) {
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${esc(canonical)}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0e1c2b">
+<meta name="theme-color" content="#242a63">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
 ${structuredData(schema)}

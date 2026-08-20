@@ -1,6 +1,6 @@
 # teamrajjaggi.com — marketing site
 
-A server-rendered marketing and lead-capture site for **Your Home Sold Guaranteed — Team Raj Jaggi (VORO Real Estate)**, modeled on the structure of jakobovgroup.com and adapted to the Long Island market.
+A server-rendered marketing and lead-capture site for **Your Home Sold Guaranteed — Team Raj Jaggi**, modeled on the structure of jakobovgroup.com and adapted to the Long Island market.
 
 It runs completely independently of the video-review app in the repo root: its own port, its own static root, its own routes. Nothing in `server.js`, `lib/`, or `public/` at the repo root is touched.
 
@@ -79,8 +79,11 @@ Everything is env-driven — see `.env.example` in the repo root for the full li
 
 Brand, phone numbers, address, social links, stats, and the guarantee wording all live in `config.js` and `data/`, so a rebrand or a copy change never requires touching a template.
 
+No brokerage affiliation is shown anywhere on the site. `SITE_BROKERAGE` is empty by default; set it and the name appears under the wordmark, in the footer, in the copyright line, in agent bios, and as `parentOrganization` in the schema.org markup.
+
 ## Content to replace before launch
 
+- **Logo.** `public/images/logo.svg` and `logo-light.svg` (the knockout variant for the dark footer) are placeholders drawn from the brand marks. Drop the supplied artwork in as `logo.png` / `logo-light.png` and the header, footer, and preview pick it up automatically — `config.js` finds the first of `.svg`, `.png`, `.webp`, `.jpg`. Remove both files and the site falls back to a typographic TRJ tile.
 - **Photography.** Drop real files in `public/images/` and set the `photo` field on team members and listings. Cards fall back to typographic tiles until then.
 - **Reviews.** `data/testimonials.js` holds representative reviews written from the team's public record. Swap in verified Google/Zillow/Yelp reviews with permission before launch.
 - **Listings.** `data/listings.js` is a display shelf, not an MLS feed. Live inventory comes from the IDX handoff.

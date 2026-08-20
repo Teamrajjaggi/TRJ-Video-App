@@ -4,7 +4,19 @@
 // Everything here is env-overridable so the site can be rebranded or
 // re-pointed at a different CINC instance without touching templates.
 
+const fs = require('fs');
+const nodePath = require('path');
+
 const env = process.env;
+
+/** First existing logo file under public/images, as a web path. */
+function findLogo(base) {
+  for (const ext of ['svg', 'png', 'webp', 'jpg']) {
+    const rel = `/images/${base}.${ext}`;
+    if (fs.existsSync(nodePath.join(__dirname, 'public', rel))) return rel;
+  }
+  return '';
+}
 
 function bool(v, fallback = false) {
   if (v === undefined || v === '') return fallback;
@@ -14,7 +26,9 @@ function bool(v, fallback = false) {
 const brand = {
   name: env.SITE_BRAND_NAME || 'Team Raj Jaggi',
   legalName: env.SITE_LEGAL_NAME || 'Your Home Sold Guaranteed — Team Raj Jaggi',
-  brokerage: env.SITE_BROKERAGE || 'VORO Real Estate',
+  // Empty by default: no brokerage affiliation is shown anywhere on the site.
+  // Set SITE_BROKERAGE to surface one in the header, footer, and agent bios.
+  brokerage: env.SITE_BROKERAGE || '',
   tagline: env.SITE_TAGLINE || 'Your Home Sold Guaranteed or We Will Buy It',
   market: env.SITE_MARKET || 'Long Island',
   marketLong: env.SITE_MARKET_LONG || 'Long Island & the New York Metro Area',
@@ -37,6 +51,11 @@ const brand = {
     x: env.SITE_X || 'https://x.com/teamrajjaggi',
   },
 };
+
+// Drop the supplied artwork at public/images/logo.png (and logo-light.png for
+// the dark footer) to replace the placeholder lockup — no code change needed.
+brand.logo = env.SITE_LOGO || findLogo('logo');
+brand.logoLight = env.SITE_LOGO_LIGHT || findLogo('logo-light') || brand.logo;
 
 brand.phoneHref = 'tel:+1' + brand.phone.replace(/\D/g, '');
 brand.addressLine = `${brand.address.street}, ${brand.address.city}, ${brand.address.state} ${brand.address.zip}`;
