@@ -3,6 +3,7 @@
 const { esc } = require('./layout');
 const { brand, stats, cinc: cincCfg } = require('../config');
 const cinc = require('../lib/cinc');
+const { findHeadshot, findListingPhoto } = require('../lib/assets');
 
 const money = (n) => '$' + Number(n).toLocaleString('en-US');
 
@@ -128,8 +129,9 @@ function splitCta() {
 
 function listingCard(listing) {
   const statusClass = listing.status.toLowerCase().replace(/\s+/g, '-');
-  const photo = listing.photo
-    ? `<img src="${esc(listing.photo)}" alt="${esc(listing.address + ', ' + listing.city)}" loading="lazy">`
+  const photoSrc = listing.photo || findListingPhoto(listing.mlsId);
+  const photo = photoSrc
+    ? `<img src="${esc(photoSrc)}" alt="${esc(listing.address + ', ' + listing.city)}" loading="lazy">`
     : `<span class="photo-placeholder" aria-hidden="true">${esc(listing.city)}</span>`;
   return `<article class="listing-card">
   <a class="listing-media" href="${esc(listingHref(listing))}"${idxTarget}>
@@ -159,9 +161,10 @@ function testimonialCard(t) {
 }
 
 function agentCard(member) {
-  const photo = member.photo
-    ? `<img src="${esc(member.photo)}" alt="${esc(member.name)}" loading="lazy">`
-    : `<span class="agent-initials" aria-hidden="true">${esc(initials(member.name))}</span>`;
+  const photoSrc = member.photo || findHeadshot(member.slug);
+  const photo = photoSrc
+    ? `<img src="${esc(photoSrc)}" alt="${esc(member.name)}" loading="lazy">`
+    : `<span class="agent-initials" aria-hidden="true">${esc(member.tile || initials(member.name))}</span>`;
   return `<article class="agent-card">
   <a class="agent-media" href="/agent/${esc(member.slug)}">${photo}</a>
   <div class="agent-body">

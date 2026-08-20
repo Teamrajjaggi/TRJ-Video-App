@@ -5,6 +5,7 @@ const c = require('../templates/components');
 const { brand, stats } = require('../config');
 const { faq } = require('../data/content');
 const team = require('../data/team');
+const { findHeadshot } = require('../lib/assets');
 const testimonials = require('../data/testimonials');
 const neighborhoods = require('../data/neighborhoods');
 
@@ -69,12 +70,13 @@ ${c.ctaBand({
 }
 
 function agentPage(member) {
+  const photoSrc = member.photo || findHeadshot(member.slug);
   const body = `
 ${c.breadcrumb([{ label: 'Home', href: '/' }, { label: 'Team', href: '/team' }, { label: member.name }])}
 <section class="section">
   <div class="wrap agent-detail">
     <div class="agent-detail-media">
-      ${member.photo ? `<img src="${esc(member.photo)}" alt="${esc(member.name)}">` : `<span class="agent-initials agent-initials-lg" aria-hidden="true">${esc(c.initials(member.name))}</span>`}
+      ${photoSrc ? `<img src="${esc(photoSrc)}" alt="${esc(member.name)}">` : `<span class="agent-initials agent-initials-lg" aria-hidden="true">${esc(member.tile || c.initials(member.name))}</span>`}
       <div class="agent-detail-contact">
         <a class="btn btn-primary btn-block" href="tel:+1${esc(member.phone.replace(/\D/g, ''))}" data-call>${esc(member.phone)}</a>
         <a class="btn btn-ghost btn-block" href="mailto:${esc(member.email)}">${esc(member.email)}</a>

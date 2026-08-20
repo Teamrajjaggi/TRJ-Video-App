@@ -4,19 +4,9 @@
 // Everything here is env-overridable so the site can be rebranded or
 // re-pointed at a different CINC instance without touching templates.
 
-const fs = require('fs');
-const nodePath = require('path');
+const { findAsset } = require('./lib/assets');
 
 const env = process.env;
-
-/** First existing logo file under public/images, as a web path. */
-function findLogo(base) {
-  for (const ext of ['svg', 'png', 'webp', 'jpg']) {
-    const rel = `/images/${base}.${ext}`;
-    if (fs.existsSync(nodePath.join(__dirname, 'public', rel))) return rel;
-  }
-  return '';
-}
 
 function bool(v, fallback = false) {
   if (v === undefined || v === '') return fallback;
@@ -54,8 +44,8 @@ const brand = {
 
 // Drop the supplied artwork at public/images/logo.png (and logo-light.png for
 // the dark footer) to replace the placeholder lockup — no code change needed.
-brand.logo = env.SITE_LOGO || findLogo('logo');
-brand.logoLight = env.SITE_LOGO_LIGHT || findLogo('logo-light') || brand.logo;
+brand.logo = env.SITE_LOGO || findAsset('images', 'logo');
+brand.logoLight = env.SITE_LOGO_LIGHT || findAsset('images', 'logo-light') || brand.logo;
 
 brand.phoneHref = 'tel:+1' + brand.phone.replace(/\D/g, '');
 brand.addressLine = `${brand.address.street}, ${brand.address.city}, ${brand.address.state} ${brand.address.zip}`;

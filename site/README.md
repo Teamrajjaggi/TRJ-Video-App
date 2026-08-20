@@ -84,7 +84,12 @@ No brokerage affiliation is shown anywhere on the site. `SITE_BROKERAGE` is empt
 ## Content to replace before launch
 
 - **Logo.** The site currently renders a typographic fallback: a navy TRJ monogram tile beside the red TEAM RAJ JAGGI wordmark. Drop the real artwork at `public/images/logo.png` (and `logo-light.png`, a knockout variant for the dark footer) and the header, footer, and preview switch to it automatically — `config.js` picks up the first of `.svg`, `.png`, `.webp`, `.jpg`, no code change needed.
-- **Photography.** Drop real files in `public/images/` and set the `photo` field on team members and listings. Cards fall back to typographic tiles until then.
+- **Photography.** Files are picked up by name — no code or data edit:
+  - headshots: `public/images/team/<slug>.jpg` (`raj-jaggi.jpg`, `rahul-jaggi.jpg`)
+  - listings: `public/images/listings/<mlsId>.jpg`
+  - neighborhoods: `public/images/neighborhoods/<slug>.jpg`
+
+  `.jpg`, `.jpeg`, `.png`, `.webp` all work. Headshot cards crop to 3:4, so supply at least 800px wide with the face in the upper third. Until a file exists, a labelled tile stands in.
 - **Reviews.** `data/testimonials.js` holds representative reviews written from the team's public record. Swap in verified Google/Zillow/Yelp reviews with permission before launch.
 - **Listings.** `data/listings.js` is a display shelf, not an MLS feed. Live inventory comes from the IDX handoff.
 - **Agent roster.** `data/team.js` has Raj, Rahul, and the two departments. Add individual agents with real licenses and bios.

@@ -6,6 +6,7 @@
 module.exports = [
   {
     slug: 'raj-jaggi',
+    tile: 'Raj',
     name: 'Raj Jaggi',
     role: 'Team Leader & Listing Specialist',
     license: 'Licensed Real Estate Salesperson, NY',
@@ -23,6 +24,7 @@ module.exports = [
   },
   {
     slug: 'rahul-jaggi',
+    tile: 'Rahul',
     name: 'Rahul Jaggi',
     role: 'Partner & Buyer Strategy',
     license: 'Licensed Real Estate Salesperson, NY',
@@ -38,6 +40,7 @@ module.exports = [
   },
   {
     slug: 'listing-team',
+    tile: 'Listing',
     name: 'The Listing Department',
     role: 'Pricing, Prep & Marketing',
     license: '',
@@ -53,6 +56,7 @@ module.exports = [
   },
   {
     slug: 'client-care',
+    tile: 'Client Care',
     name: 'Client Care & Transaction Management',
     role: 'Contract to Closing',
     license: '',
