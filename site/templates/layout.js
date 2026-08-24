@@ -229,6 +229,7 @@ function page(opts) {
   return `<!doctype html>
 <html lang="en">
 <head>
+<script>document.documentElement.className+=" js";</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(fullTitle)}</title>
@@ -242,7 +243,11 @@ function page(opts) {
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#242a63">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;700;900&display=swap">
 <link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/design.css">
 ${structuredData(schema)}
 ${analytics()}
 </head>

@@ -3,21 +3,21 @@
 // Long-form page content that is copy, not layout: guides, FAQ, process steps.
 
 const sellerSteps = [
-  { n: '01', title: 'Free home valuation', text: 'We walk the house, pull the closed comparables inside your school district, and give you a written price range with the reasoning behind it.' },
-  { n: '02', title: 'Prep and pricing plan', text: 'A punch list of what to fix and what to leave alone, plus the list price and the guaranteed price, agreed in writing before anything goes live.' },
-  { n: '03', title: 'Pre-market exposure', text: 'Your home goes to our buyer database and coming-soon list before it reaches the open market.' },
-  { n: '04', title: 'Full-market launch', text: 'Professional photography, video, floor plans, MLS syndication, and a paid search and social campaign aimed at your price band.' },
-  { n: '05', title: 'Offers and negotiation', text: 'We present every offer with the terms broken out — not just price — and negotiate the full package.' },
-  { n: '06', title: 'Contract to closing', text: 'A dedicated transaction manager runs attorney review, inspection, appraisal, and the mortgage commitment on a written schedule.' },
+  { icon: 'chart', n: '01', title: 'Free home valuation', text: 'We walk the house, pull the closed comparables inside your school district, and give you a written price range with the reasoning behind it.' },
+  { icon: 'clipboard', n: '02', title: 'Prep and pricing plan', text: 'A punch list of what to fix and what to leave alone, plus the list price and the guaranteed price, agreed in writing before anything goes live.' },
+  { icon: 'users', n: '03', title: 'Pre-market exposure', text: 'Your home goes to our buyer database and coming-soon list before it reaches the open market.' },
+  { icon: 'megaphone', n: '04', title: 'Full-market launch', text: 'Professional photography, video, floor plans, MLS syndication, and a paid search and social campaign aimed at your price band.' },
+  { icon: 'scale', n: '05', title: 'Offers and negotiation', text: 'We present every offer with the terms broken out — not just price — and negotiate the full package.' },
+  { icon: 'key', n: '06', title: 'Contract to closing', text: 'A dedicated transaction manager runs attorney review, inspection, appraisal, and the mortgage commitment on a written schedule.' },
 ];
 
 const buyerSteps = [
-  { n: '01', title: 'Strategy call', text: 'Districts, commute, taxes, and the honest version of what your budget buys in each town.' },
-  { n: '02', title: 'Financing squared away', text: 'A real pre-approval from a lender listing agents recognize — before you tour a single house.' },
-  { n: '03', title: 'Early access to inventory', text: 'You see our coming-soon listings and off-market opportunities before the open market does.' },
-  { n: '04', title: 'Showings within 24 hours', text: 'New listings get seen fast, because on Long Island the good ones are gone by the weekend.' },
-  { n: '05', title: 'Offer strategy', text: 'We build the offer around what the seller actually needs — timeline, occupancy, inspection posture — not price alone.' },
-  { n: '06', title: 'Inspection to keys', text: 'Inspection, appraisal, attorney review, and closing, managed on a written timeline.' },
+  { icon: 'phone', n: '01', title: 'Strategy call', text: 'Districts, commute, taxes, and the honest version of what your budget buys in each town.' },
+  { icon: 'dollar', n: '02', title: 'Financing squared away', text: 'A real pre-approval from a lender listing agents recognize — before you tour a single house.' },
+  { icon: 'search', n: '03', title: 'Early access to inventory', text: 'You see our coming-soon listings and off-market opportunities before the open market does.' },
+  { icon: 'clock', n: '04', title: 'Showings within 24 hours', text: 'New listings get seen fast, because on Long Island the good ones are gone by the weekend.' },
+  { icon: 'tag', n: '05', title: 'Offer strategy', text: 'We build the offer around what the seller actually needs — timeline, occupancy, inspection posture — not price alone.' },
+  { icon: 'key', n: '06', title: 'Inspection to keys', text: 'Inspection, appraisal, attorney review, and closing, managed on a written timeline.' },
 ];
 
 const guaranteePoints = [
@@ -59,12 +59,12 @@ const faq = [
 ];
 
 const whyPoints = [
-  { title: 'A guarantee in writing', text: 'Your home sold at the agreed price and timeline, or we buy it. Terms provided before you sign anything.' },
-  { title: 'A team, not a solo agent', text: 'Listing specialists, buyer specialists, a marketing department, and a transaction manager — so no part of your deal waits on one person’s calendar.' },
-  { title: 'Marketing spend behind every listing', text: 'Professional photography, video, floor plans, and a paid campaign are included, not an upsell.' },
-  { title: 'A buyer database that moves first', text: 'Our listings go to an active buyer list and a coming-soon audience before they hit the open market.' },
-  { title: 'Straight pricing advice', text: 'We will tell you the number the market supports, even when it is not the number you hoped for.' },
-  { title: 'Someone answers the phone', text: 'The most common line in our reviews, and the least glamorous thing on this list.' },
+  { icon: 'shield', title: 'A guarantee in writing', text: 'Your home sold at the agreed price and timeline, or we buy it. Terms provided before you sign anything.' },
+  { icon: 'users', title: 'A team, not a solo agent', text: 'Listing specialists, buyer specialists, a marketing department, and a transaction manager — so no part of your deal waits on one person’s calendar.' },
+  { icon: 'camera', title: 'Marketing spend behind every listing', text: 'Professional photography, video, floor plans, and a paid campaign are included, not an upsell.' },
+  { icon: 'megaphone', title: 'A buyer database that moves first', text: 'Our listings go to an active buyer list and a coming-soon audience before they hit the open market.' },
+  { icon: 'scale', title: 'Straight pricing advice', text: 'We will tell you the number the market supports, even when it is not the number you hoped for.' },
+  { icon: 'phone', title: 'Someone answers the phone', text: 'The most common line in our reviews, and the least glamorous thing on this list.' },
 ];
 
 module.exports = { sellerSteps, buyerSteps, guaranteePoints, faq, whyPoints };

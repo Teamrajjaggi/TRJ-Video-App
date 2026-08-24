@@ -5,6 +5,7 @@ const c = require('../templates/components');
 const { brand } = require('../config');
 const cinc = require('../lib/cinc');
 const { buyerSteps } = require('../data/content');
+const { findAsset } = require('../lib/assets');
 const listings = require('../data/listings');
 const neighborhoods = require('../data/neighborhoods');
 const testimonials = require('../data/testimonials');
@@ -209,6 +210,24 @@ ${c.pageHeader({
 <section class="section">
   <div class="wrap">${c.steps(buyerSteps)}</div>
 </section>
+
+${findAsset('images/photos', 'kitchen') ? `<section class="section section-tint">
+  <div class="wrap two-col">
+    <div class="frame media-figure" data-reveal>
+      <img class="photo" src="${findAsset('images/photos', 'kitchen')}" alt="Renovated kitchen interior" loading="lazy">
+    </div>
+    <div>
+      ${c.sectionHead({ eyebrow: 'What to look for', title: 'Buy the house, not the staging' })}
+      <ul class="check-list">
+        <li>Renovations that were permitted and closed out with the town.</li>
+        <li>Roof, boiler, and electrical age — the three that cost real money.</li>
+        <li>Oil tank history on anything built before the 1970s.</li>
+        <li>Water pressure, drainage, and grading around the foundation.</li>
+        <li>What the taxes will be for you, without the seller exemptions.</li>
+      </ul>
+    </div>
+  </div>
+</section>` : ''}
 
 <section class="section section-dark">
   <div class="wrap two-col">

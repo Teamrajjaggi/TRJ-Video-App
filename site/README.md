@@ -81,6 +81,33 @@ Brand, phone numbers, address, social links, stats, and the guarantee wording al
 
 No brokerage affiliation is shown anywhere on the site. `SITE_BROKERAGE` is empty by default; set it and the name appears under the wordmark, in the footer, in the copyright line, in agent bios, and as `parentOrganization` in the schema.org markup.
 
+## Design layer
+
+`templates/graphics.js` holds the site's artwork, all of it original inline SVG
+in the brand palette — no stock photography and no external asset requests:
+
+- the hero street scene, drawn in three depth layers;
+- a house illustration per listing, with roofline, garage, dormers, and palette
+  chosen deterministically from the MLS id, so a card never changes art between
+  loads;
+- a town scene per neighborhood (village, rail, waterfront, park, estate) set by
+  the `scene` field in `data/neighborhoods.js`;
+- editorial covers for blog posts, keyed to the post category;
+- the guarantee seal;
+- a Long Island coverage map with a pin per town, leader lines, and a
+  collision-free label layout;
+- a 25-icon line set used across cards, steps, and lists.
+
+`public/design.css` layers typography, depth, and motion over `styles.css`.
+Deleting it leaves a plain but fully working site. Reveal-on-scroll only ever
+*adds* an entrance animation: content is visible by default, so a JS failure or
+a missed observer callback can never leave a section blank.
+
+Two photographs sit in `public/images/photos/` (a kitchen interior on the buyer
+guide, keys on the closing CTA). They are AI-generated illustrative images, not
+photographs of any real property or client — replace them with the team's own
+photography before launch.
+
 ## Content to replace before launch
 
 - **Logo.** The site currently renders a typographic fallback: a navy TRJ monogram tile beside the red TEAM RAJ JAGGI wordmark. Drop the real artwork at `public/images/logo.png` (and `logo-light.png`, a knockout variant for the dark footer) and the header, footer, and preview switch to it automatically — `config.js` picks up the first of `.svg`, `.png`, `.webp`, `.jpg`, no code change needed.

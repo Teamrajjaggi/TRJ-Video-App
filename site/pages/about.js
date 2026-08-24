@@ -353,6 +353,7 @@ ${c.pageHeader({
   eyebrow: hood.county,
   title: `${esc(hood.name)} real estate`,
   text: hood.blurb,
+  art: c.graphics.hoodScene(hood.slug, hood.scene),
 })}
 
 <section class="section">

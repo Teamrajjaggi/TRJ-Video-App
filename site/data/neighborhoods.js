@@ -5,6 +5,7 @@
 module.exports = [
   {
     slug: 'hicksville',
+    scene: 'rail',
     name: 'Hicksville',
     city: 'Hicksville',
     state: 'NY',
@@ -15,6 +16,7 @@ module.exports = [
   },
   {
     slug: 'levittown',
+    scene: 'village',
     name: 'Levittown',
     city: 'Levittown',
     state: 'NY',
@@ -25,6 +27,7 @@ module.exports = [
   },
   {
     slug: 'syosset',
+    scene: 'estate',
     name: 'Syosset',
     city: 'Syosset',
     state: 'NY',
@@ -35,6 +38,7 @@ module.exports = [
   },
   {
     slug: 'plainview',
+    scene: 'park',
     name: 'Plainview',
     city: 'Plainview',
     state: 'NY',
@@ -45,6 +49,7 @@ module.exports = [
   },
   {
     slug: 'massapequa',
+    scene: 'water',
     name: 'Massapequa',
     city: 'Massapequa',
     state: 'NY',
@@ -55,6 +60,7 @@ module.exports = [
   },
   {
     slug: 'garden-city',
+    scene: 'estate',
     name: 'Garden City',
     city: 'Garden City',
     state: 'NY',
@@ -65,6 +71,7 @@ module.exports = [
   },
   {
     slug: 'jericho',
+    scene: 'estate',
     name: 'Jericho',
     city: 'Jericho',
     state: 'NY',
@@ -75,6 +82,7 @@ module.exports = [
   },
   {
     slug: 'bethpage',
+    scene: 'park',
     name: 'Bethpage',
     city: 'Bethpage',
     state: 'NY',
@@ -85,6 +93,7 @@ module.exports = [
   },
   {
     slug: 'westbury',
+    scene: 'village',
     name: 'Westbury & New Cassel',
     city: 'Westbury',
     state: 'NY',
@@ -95,6 +104,7 @@ module.exports = [
   },
   {
     slug: 'huntington',
+    scene: 'water',
     name: 'Huntington',
     city: 'Huntington',
     state: 'NY',
@@ -105,6 +115,7 @@ module.exports = [
   },
   {
     slug: 'farmingdale',
+    scene: 'rail',
     name: 'Farmingdale',
     city: 'Farmingdale',
     state: 'NY',
@@ -115,6 +126,7 @@ module.exports = [
   },
   {
     slug: 'queens',
+    scene: 'village',
     name: 'Queens Border',
     city: 'Queens',
     state: 'NY',

@@ -52,9 +52,26 @@ function extract(html) {
   return { title, body };
 }
 
+// Inline the photo assets so the single-file preview needs no server.
+const photoDir = path.join(__dirname, '..', 'public', 'images', 'photos');
+const photos = fs.existsSync(photoDir)
+  ? Object.fromEntries(
+      fs.readdirSync(photoDir)
+        .filter((f) => /\.(webp|png|jpe?g)$/i.test(f))
+        .map((f) => [
+          `/images/photos/${f}`,
+          `data:image/${path.extname(f).slice(1).replace('jpg', 'jpeg')};base64,${fs.readFileSync(path.join(photoDir, f)).toString('base64')}`,
+        ])
+    )
+  : {};
+
+function inlinePhotos(html) {
+  return Object.entries(photos).reduce((out, [src, uri]) => out.split(src).join(uri), html);
+}
+
 const pages = {};
 for (const [route, render] of routes) {
-  pages[route] = extract(render());
+  pages[route] = extract(inlinePhotos(render()));
 }
 
 // Inline the logo files so the single-file preview is fully self-contained.
@@ -70,7 +87,8 @@ for (const route of Object.keys(pages)) {
   pages[route].body = inlineLogos(pages[route].body);
 }
 
-const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8') +
+  '\n' + fs.readFileSync(path.join(__dirname, '..', 'public', 'design.css'), 'utf8');
 const mainJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'main.js'), 'utf8');
 
 const routerJs = `
@@ -158,6 +176,7 @@ ${css}
 #preview-note.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 <div id="app"></div>
+<script>document.documentElement.className+=' js';</script>
 <div id="preview-bar">Clickable preview &middot; every page is live</div>
 <div id="preview-note"></div>
 ${routerJs}

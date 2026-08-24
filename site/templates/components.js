@@ -3,7 +3,8 @@
 const { esc } = require('./layout');
 const { brand, stats, cinc: cincCfg } = require('../config');
 const cinc = require('../lib/cinc');
-const { findHeadshot, findListingPhoto } = require('../lib/assets');
+const { findHeadshot, findListingPhoto, findAsset } = require('../lib/assets');
+const g = require('./graphics');
 
 const money = (n) => '$' + Number(n).toLocaleString('en-US');
 
@@ -26,17 +27,46 @@ const idxTarget = cincCfg.idxNewTab && cinc.isIdxConfigured() ? ' target="_blank
 
 // --------------------------------------------------------------- sections ---
 
-function hero({ eyebrow, title, subtitle, actions = [], search = true, variant = 'home' }) {
-  return `<section class="hero hero-${esc(variant)}">
-  <div class="hero-bg" aria-hidden="true"></div>
+function hero({ eyebrow, title, subtitle, actions = [], search = true, variant = 'home', aside = '', trust = [] }) {
+  return `<section class="hero hero-${esc(variant)} grain">
+  <div class="hero-art" aria-hidden="true">${g.heroScene()}<span class="hero-scrim"></span></div>
   <div class="wrap hero-inner">
-    ${eyebrow ? `<p class="eyebrow">${esc(eyebrow)}</p>` : ''}
-    <h1 class="hero-title">${title}</h1>
-    ${subtitle ? `<p class="hero-sub">${esc(subtitle)}</p>` : ''}
-    ${actions.length ? `<div class="hero-actions">${actions.map(button).join('')}</div>` : ''}
+    <div class="hero-grid">
+      <div>
+        ${eyebrow ? `<p class="eyebrow">${esc(eyebrow)}</p>` : ''}
+        <h1 class="hero-title">${title}</h1>
+        ${subtitle ? `<p class="hero-sub">${esc(subtitle)}</p>` : ''}
+        ${actions.length ? `<div class="hero-actions">${actions.map(button).join('')}</div>` : ''}
+        ${trust.length ? `<ul class="hero-trust">${trust.map((t) => `<li>${g.icon(t.icon, { size: 18 })}${esc(t.label)}</li>`).join('')}</ul>` : ''}
+      </div>
+      ${aside ? `<div class="hero-aside">${aside}</div>` : ''}
+    </div>
     ${search ? searchBar() : ''}
   </div>
 </section>`;
+}
+
+/** The guarantee, given its own dark band with the seal. */
+function guaranteeBand({ title, intro, points = [], actions = [] }) {
+  return `<section class="section guarantee-band grain">
+  <div class="wrap guarantee-grid">
+    <div class="guarantee-seal" data-reveal>${g.guaranteeSeal(200)}</div>
+    <div>
+      <p class="eyebrow">The guarantee</p>
+      <h2>${title}</h2>
+      <p>${esc(intro)}</p>
+      <div class="guarantee-plates">
+        ${points.map((pt) => `<article class="plate" data-reveal><h3>${esc(pt.title)}</h3><p>${esc(pt.text)}</p></article>`).join('')}
+      </div>
+      ${actions.length ? `<div class="inline-actions">${actions.map(button).join('')}</div>` : ''}
+    </div>
+  </div>
+</section>`;
+}
+
+/** Coverage map with a pin per town. */
+function mapSection(activeSlug) {
+  return `<div class="map-panel" data-reveal>${g.islandMap(activeSlug)}</div>`;
 }
 
 function button(action) {
@@ -81,7 +111,7 @@ function searchBar({ compact = false } = {}) {
 function statBar(items = stats) {
   return `<section class="statbar">
   <div class="wrap statbar-grid">
-    ${items.map((s) => `<div class="stat"><span class="stat-value">${esc(s.value)}</span><span class="stat-label">${esc(s.label)}</span></div>`).join('')}
+    ${items.map((s) => `<div class="stat" data-reveal><span class="stat-value" data-count>${esc(s.value)}</span><span class="stat-label">${esc(s.label)}</span></div>`).join('')}
   </div>
 </section>`;
 }
@@ -95,7 +125,9 @@ function sectionHead({ eyebrow, title, text, align = 'left' }) {
 }
 
 function ctaBand({ title, text, actions = [] }) {
-  return `<section class="cta-band">
+  const art = findAsset('images/photos', 'keys');
+  return `<section class="cta-band grain">
+  ${art ? `<img class="cta-art" src="${esc(art)}" alt="" aria-hidden="true" loading="lazy">` : ''}
   <div class="wrap cta-inner">
     <div>
       <h2>${esc(title)}</h2>
@@ -130,12 +162,12 @@ function splitCta() {
 function listingCard(listing) {
   const statusClass = listing.status.toLowerCase().replace(/\s+/g, '-');
   const photoSrc = listing.photo || findListingPhoto(listing.mlsId);
-  const photo = photoSrc
-    ? `<img src="${esc(photoSrc)}" alt="${esc(listing.address + ', ' + listing.city)}" loading="lazy">`
-    : `<span class="photo-placeholder" aria-hidden="true">${esc(listing.city)}</span>`;
-  return `<article class="listing-card">
-  <a class="listing-media" href="${esc(listingHref(listing))}"${idxTarget}>
-    ${photo}
+  const art = photoSrc
+    ? `<img class="photo" src="${esc(photoSrc)}" alt="${esc(listing.address + ', ' + listing.city)}" loading="lazy">`
+    : g.houseScene(listing.mlsId, listing.type);
+  return `<article class="listing-card" data-reveal>
+  <a class="listing-media" href="${esc(listingHref(listing))}"${idxTarget} aria-label="${esc(listing.address)}">
+    ${art}
     <span class="badge badge-${esc(statusClass)}">${esc(listing.status)}</span>
   </a>
   <div class="listing-body">
@@ -143,7 +175,7 @@ function listingCard(listing) {
     <h3 class="listing-address"><a href="${esc(listingHref(listing))}"${idxTarget}>${esc(listing.address)}</a></h3>
     <p class="listing-city">${esc(listing.city)}, ${esc(listing.state)} ${esc(listing.zip)}</p>
     <ul class="listing-specs">
-      <li><strong>${esc(listing.beds)}</strong> bd</li>
+      <li>${g.icon('house', { size: 16 })}<strong>${esc(listing.beds)}</strong> bd</li>
       <li><strong>${esc(listing.baths)}</strong> ba</li>
       <li><strong>${Number(listing.sqft).toLocaleString('en-US')}</strong> sqft</li>
     </ul>
@@ -163,9 +195,9 @@ function testimonialCard(t) {
 function agentCard(member) {
   const photoSrc = member.photo || findHeadshot(member.slug);
   const photo = photoSrc
-    ? `<img src="${esc(photoSrc)}" alt="${esc(member.name)}" loading="lazy">`
-    : `<span class="agent-initials" aria-hidden="true">${esc(member.tile || initials(member.name))}</span>`;
-  return `<article class="agent-card">
+    ? `<img class="photo" src="${esc(photoSrc)}" alt="${esc(member.name)}" loading="lazy">`
+    : g.portraitTile(member.tile || initials(member.name), member.slug);
+  return `<article class="agent-card" data-reveal>
   <a class="agent-media" href="/agent/${esc(member.slug)}">${photo}</a>
   <div class="agent-body">
     <h3><a href="/agent/${esc(member.slug)}">${esc(member.name)}</a></h3>
@@ -189,22 +221,31 @@ function initials(name) {
 }
 
 function neighborhoodCard(n) {
-  return `<article class="hood-card">
-  <a class="hood-media" href="/neighborhoods/${esc(n.slug)}"><span aria-hidden="true">${esc(n.name)}</span></a>
+  const photo = findAsset('images/neighborhoods', n.slug);
+  const art = photo
+    ? `<img class="photo" src="${esc(photo)}" alt="${esc(n.name)}" loading="lazy">`
+    : g.hoodScene(n.slug, n.scene);
+  return `<article class="hood-card" data-reveal>
+  <a class="hood-media" href="/neighborhoods/${esc(n.slug)}" aria-label="${esc(n.name)}">
+    ${art}
+    <span class="media-plate">${esc(n.name)}</span>
+  </a>
   <div class="hood-body">
-    <h3><a href="/neighborhoods/${esc(n.slug)}">${esc(n.name)}</a></h3>
     <p class="hood-county">${esc(n.county)}</p>
     <p>${esc(n.blurb)}</p>
-    <a class="link-arrow" href="${esc(searchHref({ city: n.city, state: n.state }))}"${idxTarget}>View homes in ${esc(n.name)}</a>
+    <a class="link-arrow" href="${esc(searchHref({ city: n.city, state: n.state }))}"${idxTarget}>Homes in ${esc(n.name)}</a>
   </div>
 </article>`;
 }
 
 function postCard(post) {
-  return `<article class="post-card">
-  <a class="post-media" href="/blog/${esc(post.slug)}"><span aria-hidden="true">${esc(post.category)}</span></a>
+  return `<article class="post-card" data-reveal>
+  <a class="post-media" href="/blog/${esc(post.slug)}" aria-label="${esc(post.title)}">
+    ${g.blogCover(post.slug, post.category)}
+    <span class="media-tag">${esc(post.category)}</span>
+  </a>
   <div class="post-body">
-    <p class="post-meta">${esc(post.category)} &middot; ${esc(formatDate(post.date))} &middot; ${esc(post.readMinutes)} min read</p>
+    <p class="post-meta">${esc(formatDate(post.date))} &middot; ${esc(post.readMinutes)} min read</p>
     <h3><a href="/blog/${esc(post.slug)}">${esc(post.title)}</a></h3>
     <p>${esc(post.excerpt)}</p>
     <a class="link-arrow" href="/blog/${esc(post.slug)}">Read more</a>
@@ -219,8 +260,21 @@ function formatDate(iso) {
 
 function steps(items) {
   return `<ol class="steps">
-  ${items.map((s) => `<li><span class="step-n">${esc(s.n)}</span><h3>${esc(s.title)}</h3><p>${esc(s.text)}</p></li>`).join('')}
+  ${items
+    .map(
+      (step) => `<li data-reveal><span class="step-n">${esc(step.n)}</span>${step.icon ? `<span class="step-icon">${g.icon(step.icon, { size: 30 })}</span>` : ''}<h3>${esc(step.title)}</h3><p>${esc(step.text)}</p></li>`
+    )
+    .join('')}
 </ol>`;
+}
+
+/** Feature card with an icon, used for the "what you get" grids. */
+function whyCard(point) {
+  return `<article class="why-card" data-reveal>
+  ${point.icon ? `<span class="why-icon">${g.icon(point.icon, { size: 22 })}</span>` : ''}
+  <h3>${esc(point.title)}</h3>
+  <p>${esc(point.text)}</p>
+</article>`;
 }
 
 function faqList(items) {
@@ -235,8 +289,9 @@ function breadcrumb(trail) {
   </div></nav>`;
 }
 
-function pageHeader({ eyebrow, title, text }) {
-  return `<section class="page-header">
+function pageHeader({ eyebrow, title, text, art = '' }) {
+  return `<section class="page-header grain">
+  ${art ? `<div class="page-header-art" aria-hidden="true">${art}</div>` : ''}
   <div class="wrap">
     ${eyebrow ? `<p class="eyebrow">${esc(eyebrow)}</p>` : ''}
     <h1>${title}</h1>
@@ -339,6 +394,10 @@ const FIELDS = {
 
 module.exports = {
   hero,
+  guaranteeBand,
+  mapSection,
+  whyCard,
+  graphics: g,
   button,
   searchBar,
   statBar,

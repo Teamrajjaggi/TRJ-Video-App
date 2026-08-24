@@ -191,3 +191,62 @@
     });
   });
 })();
+
+/* Design layer: staggered reveals and counting stats. Both degrade to plain
+   static content when IntersectionObserver is unavailable or the visitor has
+   asked for reduced motion. */
+(function () {
+  'use strict';
+
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var items = document.querySelectorAll('[data-reveal]');
+
+  if (reduced || !('IntersectionObserver' in window)) {
+    Array.prototype.forEach.call(items, function (el) { el.classList.add('is-in'); });
+    return;
+  }
+
+  var revealer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('is-in');
+      revealer.unobserve(entry.target);
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+
+  Array.prototype.forEach.call(items, function (el) { revealer.observe(el); });
+
+
+
+  // Stat counters animate from zero, preserving any prefix/suffix ("1,000+", "#1").
+  var stats = document.querySelectorAll('[data-count]');
+  var counter = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var el = entry.target;
+      counter.unobserve(el);
+
+      var text = el.textContent;
+      var match = text.match(/[\d,]+/);
+      if (!match) return;
+      var target = Number(match[0].replace(/,/g, ''));
+      if (!target) return;
+
+      var prefix = text.slice(0, match.index);
+      var suffix = text.slice(match.index + match[0].length);
+      var started = null;
+
+      var step = function (now) {
+        if (started === null) started = now;
+        var progress = Math.min((now - started) / 900, 1);
+        // Ease out so the number settles rather than stopping dead.
+        var eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = prefix + Math.round(target * eased).toLocaleString('en-US') + suffix;
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }, { threshold: 0.5 });
+
+  Array.prototype.forEach.call(stats, function (el) { counter.observe(el); });
+})();
