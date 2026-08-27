@@ -1,6 +1,25 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+
 const { brand, site, cinc } = require('../config');
+
+// An SVG loaded through <img> cannot reach the page's webfonts, and the logo is
+// set in the site display face — so SVG logos are inlined instead. Read once.
+const svgCache = new Map();
+function inlineSvg(src) {
+  if (!src || !src.endsWith('.svg')) return null;
+  if (!svgCache.has(src)) {
+    try {
+      svgCache.set(src, fs.readFileSync(path.join(__dirname, '..', 'public', src), 'utf8').replace(/<\?xml[^>]*\?>\s*/, ''));
+    } catch (err) {
+      console.error('[site] could not inline logo', src, err.message);
+      svgCache.set(src, null);
+    }
+  }
+  return svgCache.get(src);
+}
 
 /**
  * Brand lockup. Renders the logo file when one is present under
@@ -9,8 +28,12 @@ const { brand, site, cinc } = require('../config');
  */
 function brandMark({ light = false } = {}) {
   const src = light ? brand.logoLight : brand.logo;
+  const svg = inlineSvg(src);
+  if (svg) {
+    return `<span class="brand-logo${light ? ' brand-logo-light' : ''}" role="img" aria-label="${esc(brand.name)}">${svg}</span>`;
+  }
   if (src) {
-    return `<img class="brand-logo${light ? ' brand-logo-light' : ''}" src="${esc(src)}" alt="${esc(brand.name)}" width="200" height="109">`;
+    return `<img class="brand-logo${light ? ' brand-logo-light' : ''}" src="${esc(src)}" alt="${esc(brand.name)}">`;
   }
   return '<span class="brand-mark" aria-hidden="true">TRJ</span>';
 }
@@ -34,6 +57,7 @@ const NAV = [
     href: '/home-search',
     children: [
       { label: 'Search Homes', href: '/home-search' },
+      { label: 'Open Houses', href: '/open-houses' },
       { label: 'Featured Listings', href: '/properties/sale' },
       { label: 'Buyer Guide', href: '/buyers-guide' },
       { label: 'Mortgage Calculator', href: '/mortgage-calculator' },
@@ -142,6 +166,7 @@ function footer() {
     <div class="footer-col">
       <h3>Buy</h3>
       <a href="/home-search">Search Homes</a>
+      <a href="/open-houses">Open Houses</a>
       <a href="/properties/sale">Featured Listings</a>
       <a href="/buyers-guide">Buyer Guide</a>
       <a href="/mortgage-calculator">Mortgage Calculator</a>

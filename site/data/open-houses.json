@@ -1,0 +1,73 @@
+{
+  "heading": "Team Raj Jaggi's brand new listings",
+  "weekendLabel": "Open houses — August 22 & 23, 2026",
+  "intro": "The best houses on the market, brought to you by Team Raj Jaggi. Register for the open house you are interested in and get instant access to all the features of the house.",
+  "houses": [
+    {
+      "address": "10 Helene Dr",
+      "town": "Shirley",
+      "saturday": "12:00PM-1:30PM",
+      "sunday": "12:00PM-1:30PM"
+    },
+    {
+      "address": "125 S 5th St",
+      "town": "Bethpage",
+      "saturday": "12:00PM-1:30PM",
+      "sunday": ""
+    },
+    {
+      "address": "18 Catherwood Crescent",
+      "town": "Melville",
+      "saturday": "12:00PM-1:30PM",
+      "sunday": "2:00PM-3:30PM"
+    },
+    {
+      "address": "18 Dexter Ln",
+      "town": "Kings Park",
+      "saturday": "12:00PM-1:30PM",
+      "sunday": "12:00PM-1:30PM"
+    },
+    {
+      "address": "20 Cornwall Ln",
+      "town": "Hicksville",
+      "saturday": "12:00PM-1:30PM",
+      "sunday": "12:00PM-1:30PM"
+    },
+    {
+      "address": "20 Howard St",
+      "town": "Hicksville",
+      "saturday": "12:00PM-1:30PM",
+      "sunday": "2:30PM-4:00PM"
+    },
+    {
+      "address": "28 Penn Drive",
+      "town": "Dix Hills",
+      "saturday": "",
+      "sunday": "1:00PM-2:30PM"
+    },
+    {
+      "address": "4 Balsam Dr",
+      "town": "Hicksville",
+      "saturday": "11:30AM-1:30PM",
+      "sunday": "2:00PM-3:30PM"
+    },
+    {
+      "address": "508 Michigan St",
+      "town": "Ronkonkoma",
+      "saturday": "1:00PM-2:30PM",
+      "sunday": ""
+    },
+    {
+      "address": "61 Cheshire Rd",
+      "town": "Bethpage",
+      "saturday": "12:00PM-1:30PM",
+      "sunday": "1:30PM-3:00PM"
+    },
+    {
+      "address": "8 Cynthia Lane",
+      "town": "East Northport",
+      "saturday": "12:00PM-1:30PM",
+      "sunday": "12:00PM-1:30PM"
+    }
+  ]
+}

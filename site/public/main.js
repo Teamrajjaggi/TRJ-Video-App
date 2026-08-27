@@ -250,3 +250,16 @@
 
   Array.prototype.forEach.call(stats, function (el) { counter.observe(el); });
 })();
+
+/* Open-house Register buttons drop the address into the registration form. */
+(function () {
+  'use strict';
+  var field = document.querySelector('#f-propertyAddress');
+  if (!field) return;
+  document.querySelectorAll('[data-register]').forEach(function (link) {
+    link.addEventListener('click', function () {
+      field.value = link.getAttribute('data-register') || '';
+      field.focus({ preventScroll: true });
+    });
+  });
+})();

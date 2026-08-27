@@ -29,7 +29,7 @@ const guaranteePoints = [
 
 const faq = [
   {
-    q: 'What does "Your Home Sold Guaranteed or We Will Buy It" actually mean?',
+    q: `What does "Your Home Sold Guaranteed or I'll Buy It" actually mean?`,
     a: 'We agree on a list price, a guaranteed purchase price, and a timeline in writing before your home is listed. If it does not sell within that window, we buy it at the agreed price. Conditions apply and not every home qualifies — the full written terms are provided at the listing appointment.',
   },
   {
@@ -67,4 +67,67 @@ const whyPoints = [
   { icon: 'phone', title: 'Someone answers the phone', text: 'The most common line in our reviews, and the least glamorous thing on this list.' },
 ];
 
-module.exports = { sellerSteps, buyerSteps, guaranteePoints, faq, whyPoints };
+// The team's own listing-presentation numbers.
+const sellingReasons = [
+  {
+    n: '1',
+    icon: 'users',
+    title: '65,000+ buyers in waiting',
+    text: 'Our database holds more than 65,000 active buyers. Your home may already be sold to someone on that list before it reaches the open market.',
+  },
+  {
+    n: '2',
+    icon: 'house',
+    title: '10x more homes sold',
+    text: 'We sell over ten times more homes than the average agent. Because we sell more homes, we can put more behind selling yours.',
+  },
+  {
+    n: '3',
+    icon: 'dollar',
+    title: '3.8% higher sales price',
+    text: 'Our listings sell for 3.8% more than the average agent achieves — real dollars that stay in your pocket at closing.',
+  },
+  {
+    n: '4',
+    icon: 'clock',
+    title: '38 days, not 91',
+    text: 'Per the Long Island MLS, the average agent takes 91 days to sell a home. Our average is 38.',
+  },
+];
+
+// The three seller programs, as presented on the listing appointment.
+const sellerPrograms = [
+  {
+    icon: 'shield',
+    title: 'Guaranteed Sold',
+    text: 'Your home sold at the agreed price and timeline, or we buy it. Ask about the program — a service guarantee by Team Raj Jaggi, some terms and conditions apply.',
+    href: '/guaranteed-sale',
+    cta: 'How it works',
+  },
+  {
+    icon: 'doc',
+    title: 'One Day Listing',
+    text: 'Cancel your listing agreement at any time, without penalty. You stay because the work is working, not because you signed something.',
+    href: '/home-valuation',
+    cta: 'Start here',
+  },
+  {
+    icon: 'scale',
+    title: 'Flexible Commissions',
+    text: 'Several commission structures to choose from. Pick the one that fits your sale — we give you every opportunity to save money.',
+    href: '/contact-us',
+    cta: 'Talk options',
+  },
+];
+
+// Outlets the team has appeared on, shown as a credibility strip.
+const asSeenOn = [
+  'Zillow 5-Star Premier Agent',
+  'FOX',
+  'CBS News',
+  'NBC',
+  'ABC',
+  'Top Agent Magazine',
+];
+
+module.exports = { sellerSteps, buyerSteps, guaranteePoints, faq, whyPoints, sellingReasons, sellerPrograms, asSeenOn };

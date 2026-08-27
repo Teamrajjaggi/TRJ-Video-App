@@ -15,11 +15,12 @@ function bool(v, fallback = false) {
 
 const brand = {
   name: env.SITE_BRAND_NAME || 'Team Raj Jaggi',
-  legalName: env.SITE_LEGAL_NAME || 'Your Home Sold Guaranteed — Team Raj Jaggi',
+  legalName: env.SITE_LEGAL_NAME || 'Team Raj Jaggi — Your Home Sold Guaranteed',
   // Empty by default: no brokerage affiliation is shown anywhere on the site.
   // Set SITE_BROKERAGE to surface one in the header, footer, and agent bios.
   brokerage: env.SITE_BROKERAGE || '',
-  tagline: env.SITE_TAGLINE || 'Your Home Sold Guaranteed or We Will Buy It',
+  tagline: env.SITE_TAGLINE || "Your Home Sold Guaranteed or I'll Buy It",
+  positioning: env.SITE_POSITIONING || 'Home Buying & Selling System',
   market: env.SITE_MARKET || 'Long Island',
   marketLong: env.SITE_MARKET_LONG || 'Long Island & the New York Metro Area',
   domain: env.SITE_DOMAIN || 'teamrajjaggi.com',
@@ -44,17 +45,18 @@ const brand = {
 
 // Drop the supplied artwork at public/images/logo.png (and logo-light.png for
 // the dark footer) to replace the placeholder lockup — no code change needed.
-brand.logo = env.SITE_LOGO || findAsset('images', 'logo');
-brand.logoLight = env.SITE_LOGO_LIGHT || findAsset('images', 'logo-light') || brand.logo;
+// A supplied logo file always wins; the vector stand-in is only the fallback.
+brand.logo = env.SITE_LOGO || findAsset('images', 'logo') || findAsset('images', 'logo-fallback');
+brand.logoLight = env.SITE_LOGO_LIGHT || findAsset('images', 'logo-light') || findAsset('images', 'logo-fallback-light') || brand.logo;
 
 brand.phoneHref = 'tel:+1' + brand.phone.replace(/\D/g, '');
 brand.addressLine = `${brand.address.street}, ${brand.address.city}, ${brand.address.state} ${brand.address.zip}`;
 
 const stats = [
-  { value: env.SITE_STAT_1_VALUE || '1,000+', label: env.SITE_STAT_1_LABEL || 'Families served' },
-  { value: env.SITE_STAT_2_VALUE || '500+', label: env.SITE_STAT_2_LABEL || 'Five-star reviews' },
-  { value: env.SITE_STAT_3_VALUE || '#1', label: env.SITE_STAT_3_LABEL || 'Team on Long Island by sales' },
-  { value: env.SITE_STAT_4_VALUE || '15+', label: env.SITE_STAT_4_LABEL || 'Years in the market' },
+  { value: env.SITE_STAT_1_VALUE || '65,000+', label: env.SITE_STAT_1_LABEL || 'Buyers in our database' },
+  { value: env.SITE_STAT_2_VALUE || '10x', label: env.SITE_STAT_2_LABEL || 'More homes sold than the average agent' },
+  { value: env.SITE_STAT_3_VALUE || '3.8%', label: env.SITE_STAT_3_LABEL || 'Higher sales price than average' },
+  { value: env.SITE_STAT_4_VALUE || '38', label: env.SITE_STAT_4_LABEL || 'Days to sell, vs 91 market average' },
 ];
 
 // ---- CINC (Commissions Inc.) ----------------------------------------------

@@ -370,3 +370,88 @@ body { background: var(--cream); }
 /* Page headers can carry the matching illustration behind the scrim. */
 .page-header-art { position: absolute; inset: 0; overflow: hidden; opacity: .3; filter: blur(1.5px); }
 .page-header-art .scene { object-fit: cover; }
+
+/* Brand lockup. The logo is inlined SVG so it inherits the page's display face. */
+.brand-logo { display: block; }
+.brand-logo svg { display: block; height: 54px; width: auto; }
+.brand.brand-has-logo .brand-text { display: none; }
+.site-footer .brand-logo svg { height: 76px; }
+@media (max-width: 640px) { .brand-logo svg { height: 44px; } }
+
+/* --------------------------------------------------- reasons & programs */
+
+.reason-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.reason { position: relative; padding: 2.6rem 1.5rem 1.5rem; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); text-align: center; }
+.section-tint .reason { border-color: transparent; box-shadow: var(--shadow); }
+.reason-n {
+  position: absolute; top: -26px; left: 50%; transform: translateX(-50%);
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  display: grid; place-items: center;
+  font-family: var(--display); font-size: 1.5rem; font-weight: 700;
+}
+.reason-icon { display: block; color: var(--accent); margin: .3rem auto .7rem; }
+.reason h3 { font-size: 1.12rem; margin-bottom: .45rem; }
+.reason p { margin: 0; font-size: .95rem; }
+
+.program { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.75rem; display: flex; flex-direction: column; gap: .6rem; }
+.section-tint .program { border-color: transparent; box-shadow: var(--shadow); }
+.program-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--ink); color: #fff; }
+.program h3 { margin: .4rem 0 0; font-size: 1.15rem; }
+.program p { margin: 0; font-size: .95rem; }
+.program .link-arrow { margin-top: auto; align-self: flex-start; }
+
+/* ------------------------------------------------------------ press ---- */
+
+.press-strip { background: #fff; border-bottom: 1px solid var(--line); padding: 1.75rem 0; }
+.press-title {
+  text-align: center; font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 1rem; font-weight: 700;
+}
+.press-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .9rem 2.5rem;
+}
+.press-list li {
+  font-family: var(--display); font-size: clamp(1rem, 2vw, 1.35rem); font-weight: 700;
+  color: var(--ink); opacity: .78; letter-spacing: -.01em;
+}
+.press-art { max-width: min(1100px, 100%); margin: 0 auto; height: auto; }
+
+.quote-agent, .quote-source { font-size: .8rem; }
+.quote-agent { color: var(--accent); font-weight: 700; }
+
+/* ------------------------------------------------------- open houses --- */
+
+.oh-summary { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin-bottom: 1.75rem; }
+.oh-summary span { font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: var(--ink-soft); }
+.oh-summary span::before { content: ""; display: inline-block; width: 8px; height: 8px; background: var(--accent); margin-right: .6rem; vertical-align: middle; }
+
+.oh-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+.oh-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.oh-table th, .oh-table td { text-align: left; padding: 1rem 1.1rem; border-bottom: 1px solid var(--line-soft); font-size: .95rem; }
+.oh-table thead th {
+  font-family: var(--sans); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); background: var(--sand); font-weight: 700;
+}
+.oh-table tbody tr:last-child th, .oh-table tbody tr:last-child td { border-bottom: 0; }
+.oh-table tbody tr:hover td, .oh-table tbody tr:hover th { background: var(--accent-wash); }
+.oh-address { display: block; font-family: var(--display); font-size: 1.05rem; color: var(--ink); }
+.oh-town { display: block; font-size: .85rem; color: var(--muted); }
+.oh-off { color: var(--line); }
+.oh-action { text-align: right; white-space: nowrap; }
+.btn-sm { padding: .55rem .95rem; font-size: .72rem; }
+
+.oh-table-edit input {
+  width: 100%; border: 1px solid var(--line); border-radius: 2px; padding: .6rem .7rem;
+  font-family: var(--sans); font-size: .92rem;
+}
+.oh-table-edit td { padding: .5rem; }
+.admin-form { display: grid; gap: 1.5rem; }
+.admin-flash { padding: .9rem 1.1rem; border-radius: var(--radius); font-weight: 600; }
+.admin-flash.is-ok { background: #e8f6ee; color: #1d7a4c; }
+.admin-flash.is-error { background: var(--accent-wash); color: var(--accent-dark); }
+
+@media (max-width: 640px) {
+  .oh-table { min-width: 520px; }
+}

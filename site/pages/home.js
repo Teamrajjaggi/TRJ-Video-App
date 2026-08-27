@@ -3,7 +3,7 @@
 const { page, esc } = require('../templates/layout');
 const c = require('../templates/components');
 const { brand } = require('../config');
-const { whyPoints, sellerSteps, guaranteePoints } = require('../data/content');
+const { whyPoints, sellerSteps, guaranteePoints, sellingReasons, sellerPrograms, asSeenOn } = require('../data/content');
 const team = require('../data/team');
 const listings = require('../data/listings');
 const testimonials = require('../data/testimonials');
@@ -14,8 +14,8 @@ module.exports = function home() {
   const featured = listings.filter((l) => l.status !== 'Sold').slice(0, 3);
   const body = `
 ${c.hero({
-  eyebrow: brand.marketLong,
-  title: `Your Home Sold Guaranteed<br><span class="accent">or We Will Buy It</span>`,
+  eyebrow: brand.positioning,
+  title: `Your Home Sold Guaranteed<br><span class="accent">or I'll Buy It</span>`,
   subtitle: `${brand.name} is the #1 home selling team on Long Island. More than 1,000 families served, 500+ five-star reviews, and the price and timeline agreed in writing before your home reaches the market.`,
   actions: [
     { label: 'What Is My Home Worth?', href: '/home-valuation' },
@@ -31,6 +31,26 @@ ${c.hero({
 })}
 
 ${c.statBar()}
+
+${c.asSeenOnStrip(asSeenOn)}
+
+<section class="section">
+  <div class="wrap">
+    ${c.sectionHead({
+      eyebrow: 'Why sellers call us',
+      title: 'Four big reasons to ask Team Raj Jaggi to sell your home',
+      align: 'center',
+    })}
+    <div class="reason-grid">${sellingReasons.map(c.reasonCard).join('')}</div>
+  </div>
+</section>
+
+<section class="section section-tint">
+  <div class="wrap">
+    ${c.sectionHead({ eyebrow: 'Sell your home', title: 'Three ways we take the risk off you' })}
+    <div class="grid grid-3">${sellerPrograms.map(c.programCard).join('')}</div>
+  </div>
+</section>
 
 ${c.guaranteeBand({
   title: 'A promise you can read before you sign',

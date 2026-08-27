@@ -28,6 +28,8 @@ const buy = require('./pages/buy');
 const about = require('./pages/about');
 const blog = require('./pages/blog');
 const misc = require('./pages/misc');
+const openHouses = require('./pages/open-houses');
+const schedule = require('./lib/open-houses');
 
 const team = require('./data/team');
 const neighborhoods = require('./data/neighborhoods');
@@ -67,6 +69,7 @@ app.get('/properties/:mlsId', (req, res, next) => {
   if (!listing) return next();
   send(res, buy.listingDetail(listing));
 });
+app.get('/open-houses', (req, res) => send(res, openHouses.openHousesPage()));
 app.get('/buyers-guide', (req, res) => send(res, buy.buyersGuide()));
 app.get('/mortgage-calculator', (req, res) => send(res, buy.mortgageCalculator()));
 
@@ -111,6 +114,8 @@ const ALIASES = {
   '/reviews': '/testimonials',
   '/search': '/home-search',
   '/listings': '/properties/sale',
+  '/open-house': '/open-houses',
+  '/openhouses': '/open-houses',
   '/sell': '/home-valuation',
   '/what-is-my-home-worth': '/home-valuation',
   '/careers': '/join-us',
@@ -127,7 +132,7 @@ app.get('/robots.txt', (req, res) => {
 app.get('/sitemap.xml', (req, res) => {
   const urls = [
     '/', '/home-search', '/properties/sale', '/buyers-guide', '/mortgage-calculator',
-    '/home-valuation', '/guaranteed-sale', '/sellers-guide', '/neighborhoods',
+    '/home-valuation', '/guaranteed-sale', '/sellers-guide', '/neighborhoods', '/open-houses',
     '/team', '/testimonials', '/contact-us', '/join-us', '/blog',
     '/privacy', '/terms', '/accessibility',
   ]
@@ -236,7 +241,7 @@ function requireAdmin(req, res) {
     res.status(403).type('text').send('SITE_ADMIN_TOKEN is not set; admin routes are disabled.');
     return false;
   }
-  const token = req.get('x-admin-token') || req.query.token || '';
+  const token = req.get('x-admin-token') || req.query.token || (req.body && req.body.token) || '';
   const a = Buffer.from(String(token));
   const b = Buffer.from(siteCfg.adminToken);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
@@ -245,6 +250,55 @@ function requireAdmin(req, res) {
   }
   return true;
 }
+
+// --------------------------------------------------- open house admin ----
+
+app.get('/admin/open-houses', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  send(res, openHouses.openHousesAdmin({ token: String(req.query.token || ''), saved: req.query.saved === '1' }));
+});
+
+app.post('/admin/open-houses', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+
+  // The form posts flat address_0, town_0, ... fields; fold them back to rows.
+  const houses = [];
+  for (let i = 0; `address_${i}` in req.body; i += 1) {
+    houses.push({
+      address: req.body[`address_${i}`],
+      town: req.body[`town_${i}`],
+      saturday: req.body[`saturday_${i}`],
+      sunday: req.body[`sunday_${i}`],
+    });
+  }
+
+  try {
+    schedule.write({
+      heading: req.body.heading,
+      weekendLabel: req.body.weekendLabel,
+      intro: req.body.intro,
+      houses,
+    });
+  } catch (err) {
+    console.error('[site] could not save open houses:', err.message);
+    return send(res, openHouses.openHousesAdmin({
+      token: String(req.body.token || ''),
+      error: 'Could not save: ' + err.message,
+    }));
+  }
+
+  res.redirect(`/admin/open-houses?token=${encodeURIComponent(String(req.body.token || ''))}&saved=1`);
+});
+
+// JSON equivalent, for updating the schedule from a script or automation.
+app.post('/api/admin/open-houses', (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    res.json({ ok: true, schedule: schedule.write(req.body || {}) });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 app.get('/api/cinc/health', async (req, res) => {
   if (!requireAdmin(req, res)) return;

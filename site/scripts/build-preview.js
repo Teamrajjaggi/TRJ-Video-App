@@ -14,6 +14,7 @@ const buy = require('../pages/buy');
 const about = require('../pages/about');
 const blog = require('../pages/blog');
 const misc = require('../pages/misc');
+const openHouses = require('../pages/open-houses');
 
 const team = require('../data/team');
 const neighborhoods = require('../data/neighborhoods');
@@ -23,6 +24,7 @@ const posts = require('../data/posts');
 const routes = [
   ['/', () => home()],
   ['/home-search', () => buy.homeSearch({})],
+  ['/open-houses', () => openHouses.openHousesPage()],
   ['/properties/sale', () => buy.featuredListings()],
   ['/buyers-guide', () => buy.buyersGuide()],
   ['/mortgage-calculator', () => buy.mortgageCalculator()],

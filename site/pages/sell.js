@@ -4,7 +4,7 @@ const { page, esc } = require('../templates/layout');
 const c = require('../templates/components');
 const { brand } = require('../config');
 const cinc = require('../lib/cinc');
-const { sellerSteps, guaranteePoints, faq } = require('../data/content');
+const { sellerSteps, guaranteePoints, faq, sellingReasons, sellerPrograms } = require('../data/content');
 const testimonials = require('../data/testimonials');
 
 function homeValuation() {
@@ -82,7 +82,7 @@ function guaranteedSale() {
   const body = `
 ${c.pageHeader({
   eyebrow: 'The signature program',
-  title: 'Your Home Sold Guaranteed,<br><span class="accent">or We Will Buy It</span>',
+  title: `Your Home Sold Guaranteed,<br><span class="accent">or I'll Buy It</span>`,
   text: 'The price and the timeline are agreed in writing before your home goes on the market. If it does not sell inside that window, we buy it.',
 })}
 
@@ -132,6 +132,13 @@ ${c.pageHeader({
   </div>
 </section>
 
+<section class="section">
+  <div class="wrap">
+    ${c.sectionHead({ eyebrow: 'Seller programs', title: 'The rest of what comes with the listing' })}
+    <div class="grid grid-3">${sellerPrograms.map(c.programCard).join('')}</div>
+  </div>
+</section>
+
 <section class="section section-tint">
   <div class="wrap narrow">
     ${c.sectionHead({ eyebrow: 'Questions', title: 'Common questions about the guarantee', align: 'center' })}
@@ -141,7 +148,7 @@ ${c.pageHeader({
 `;
 
   return page({
-    title: 'Your Home Sold Guaranteed or We Will Buy It',
+    title: `Your Home Sold Guaranteed or I'll Buy It`,
     description: 'How the Team Raj Jaggi guaranteed sale program works: the list price, the guaranteed price, and the timeline, all agreed in writing before your Long Island home is listed.',
     path: '/guaranteed-sale',
     body,
@@ -167,6 +174,14 @@ ${c.pageHeader({
 
 <section class="section">
   <div class="wrap">
+    ${c.sectionHead({ eyebrow: 'Why sellers call us', title: 'Four big reasons', align: 'center' })}
+    <div class="reason-grid">${sellingReasons.map(c.reasonCard).join('')}</div>
+  </div>
+</section>
+
+<section class="section section-tint">
+  <div class="wrap">
+    ${c.sectionHead({ eyebrow: 'The process', title: 'Six steps from valuation to closing' })}
     ${c.steps(sellerSteps)}
   </div>
 </section>

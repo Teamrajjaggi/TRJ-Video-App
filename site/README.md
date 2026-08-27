@@ -27,7 +27,26 @@ npm run site          # http://localhost:4000
 | `/blog`, `/blog/:slug` | 5 seeded posts with BlogPosting schema |
 | `/contact-us`, `/join-us` | Contact and agent recruiting |
 | `/privacy`, `/terms`, `/accessibility` | Legal, fair housing, TCPA consent language |
+| `/open-houses` | This weekend's open house schedule, with per-house registration |
+| `/admin/open-houses` | Token-protected editor for that schedule |
 | `/sitemap.xml`, `/robots.txt`, `/healthz` | Infrastructure |
+
+## Updating the open houses
+
+The schedule lives in `data/open-houses.json` and can be edited two ways:
+
+1. **In the browser.** Go to `/admin/open-houses?token=<SITE_ADMIN_TOKEN>`, edit the
+   weekend label and the rows, and save. The public page changes immediately —
+   no deploy. Clearing an address removes that row; three blank rows are always
+   provided for additions.
+2. **In the file.** Edit `data/open-houses.json` and commit it.
+
+An automation can also `POST /api/admin/open-houses` with the same JSON shape
+and an `x-admin-token` header — useful if the schedule is generated from the MLS.
+
+Every registration posts through the normal lead pipeline tagged `open-house`,
+with the address the visitor picked, so it lands in CINC attributed to that
+house.
 
 Every page is server-rendered from `pages/*.js` on top of `templates/layout.js`, so nav, footer, schema.org markup, and analytics tags exist in exactly one place.
 
@@ -110,17 +129,19 @@ photography before launch.
 
 ## Content to replace before launch
 
-- **Logo.** The site currently renders a typographic fallback: a navy TRJ monogram tile beside the red TEAM RAJ JAGGI wordmark. Drop the real artwork at `public/images/logo.png` (and `logo-light.png`, a knockout variant for the dark footer) and the header, footer, and preview switch to it automatically — `config.js` picks up the first of `.svg`, `.png`, `.webp`, `.jpg`, no code change needed.
+- **Logo.** `public/images/logo-fallback.svg` is a vector *approximation* of the TRJ mark, not the real artwork. Drop the supplied file at `public/images/logo.png` (and `logo-light.png`, a knockout version for the dark footer) and it takes over automatically — a real file always wins over the fallback.
+- **Press strip.** The "as seen and heard on" row is set in type. Drop the supplied logo strip at `public/images/as-seen-on.png` and it replaces the text version.
+- **Old note on the logo.** The site otherwise renders a typographic fallback: a navy TRJ monogram tile beside the red TEAM RAJ JAGGI wordmark. Drop the real artwork at `public/images/logo.png` (and `logo-light.png`, a knockout variant for the dark footer) and the header, footer, and preview switch to it automatically — `config.js` picks up the first of `.svg`, `.png`, `.webp`, `.jpg`, no code change needed.
 - **Photography.** Files are picked up by name — no code or data edit:
   - headshots: `public/images/team/<slug>.jpg` (`raj-jaggi.jpg`, `rahul-jaggi.jpg`)
   - listings: `public/images/listings/<mlsId>.jpg`
   - neighborhoods: `public/images/neighborhoods/<slug>.jpg`
 
   `.jpg`, `.jpeg`, `.png`, `.webp` all work. Headshot cards crop to 3:4, so supply at least 800px wide with the face in the upper third. Until a file exists, a labelled tile stands in.
-- **Reviews.** `data/testimonials.js` holds representative reviews written from the team's public record. Swap in verified Google/Zillow/Yelp reviews with permission before launch.
+- **Reviews.** `data/testimonials.js` now holds real five-star reviews from the team's Zillow profile, quoted verbatim and cut only at sentence boundaries. Add newer ones as they come in.
 - **Listings.** `data/listings.js` is a display shelf, not an MLS feed. Live inventory comes from the IDX handoff.
 - **Agent roster.** `data/team.js` has Raj, Rahul, and the two departments. Add individual agents with real licenses and bios.
-- **Stats.** The counts in `config.js` (1,000+ families, 500+ reviews, #1 by sales) come from the team's own public marketing — confirm they are current and substantiable before publishing.
+- **Stats.** The figures in `config.js` (65,000+ buyers in the database, 10x more homes sold, 3.8% higher sales price, 38 days vs 91) come from the team's own listing presentation. Keep them current — they are performance claims and need to stay substantiable.
 - **Guarantee terms.** The site describes the guarantee and states that written terms are provided at the listing appointment. Have counsel review the wording against the actual agreement.
 
 ## Preview build

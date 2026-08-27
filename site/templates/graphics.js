@@ -497,7 +497,7 @@ function guaranteeSeal(size = 168) {
     <textPath href="#seal-arc-top" startOffset="50%" text-anchor="middle">SOLD GUARANTEED</textPath>
   </text>
   <text fill="${RED_SOFT}" font-family="Georgia, serif" font-size="11" letter-spacing="2">
-    <textPath href="#seal-arc-bottom" startOffset="50%" text-anchor="middle">OR WE BUY IT</textPath>
+    <textPath href="#seal-arc-bottom" startOffset="50%" text-anchor="middle">OR I'LL BUY IT</textPath>
   </text>
   <g transform="translate(100 100)">
     <g transform="translate(-24 -32) scale(2)" fill="none" stroke="${CREAM}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">

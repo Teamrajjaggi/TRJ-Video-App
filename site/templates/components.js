@@ -188,7 +188,12 @@ function testimonialCard(t) {
   return `<figure class="quote-card">
   <div class="stars" aria-label="Five out of five stars">${'&#9733;'.repeat(5)}</div>
   <blockquote>${esc(t.quote)}</blockquote>
-  <figcaption><strong>${esc(t.name)}</strong><span>${esc(t.location)}${t.source ? ' &middot; ' + esc(t.source) : ''}</span></figcaption>
+  <figcaption>
+    <strong>${esc(t.name)}</strong>
+    <span>${esc(t.location)}</span>
+    ${t.agent ? `<span class="quote-agent">Agent: ${esc(t.agent)}</span>` : ''}
+    ${t.source ? `<span class="quote-source">${esc(t.source)} review</span>` : ''}
+  </figcaption>
 </figure>`;
 }
 
@@ -266,6 +271,43 @@ function steps(items) {
     )
     .join('')}
 </ol>`;
+}
+
+/** Numbered reason panel: the listing-presentation stats. */
+function reasonCard(reason) {
+  return `<article class="reason" data-reveal>
+  <span class="reason-n">${esc(reason.n)}</span>
+  <span class="reason-icon">${g.icon(reason.icon, { size: 26 })}</span>
+  <h3>${esc(reason.title)}</h3>
+  <p>${esc(reason.text)}</p>
+</article>`;
+}
+
+/** Seller program card with its own call to action. */
+function programCard(program) {
+  return `<article class="program" data-reveal>
+  <span class="program-icon">${g.icon(program.icon, { size: 24 })}</span>
+  <h3>${esc(program.title)}</h3>
+  <p>${esc(program.text)}</p>
+  <a class="link-arrow" href="${esc(program.href)}">${esc(program.cta)}</a>
+</article>`;
+}
+
+/**
+ * "As seen and heard on" strip. Uses the supplied press-logo artwork when it is
+ * present at public/images/as-seen-on.*, and otherwise sets the outlets in type
+ * rather than redrawing broadcaster trademarks.
+ */
+function asSeenOnStrip(outlets) {
+  const art = findAsset('images', 'as-seen-on');
+  return `<section class="press-strip">
+  <div class="wrap">
+    <p class="press-title">As seen and heard on</p>
+    ${art
+      ? `<img class="press-art" src="${esc(art)}" alt="As seen on ${esc(outlets.join(', '))}" loading="lazy">`
+      : `<ul class="press-list">${outlets.map((o) => `<li>${esc(o)}</li>`).join('')}</ul>`}
+  </div>
+</section>`;
 }
 
 /** Feature card with an icon, used for the "what you get" grids. */
@@ -394,6 +436,9 @@ const FIELDS = {
 
 module.exports = {
   hero,
+  reasonCard,
+  programCard,
+  asSeenOnStrip,
   guaranteeBand,
   mapSection,
   whyCard,
