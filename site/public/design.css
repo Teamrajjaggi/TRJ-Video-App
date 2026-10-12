@@ -374,7 +374,20 @@ body { background: var(--cream); }
 /* Brand lockup. The logo is inlined SVG so it inherits the page's display face. */
 .brand-logo { display: block; }
 .brand-logo svg { display: block; height: 54px; width: auto; }
-.brand.brand-has-logo .brand-text { display: none; }
+/* With the logo present the wordmark carries the team name, so the text block
+   beside it names the company instead of repeating it. The base sheet clips
+   that block when a logo exists; bring it back and lay it out inline. */
+.brand.brand-has-logo .brand-text {
+  position: static; width: auto; height: auto; margin: 0;
+  overflow: visible; clip: auto; white-space: normal;
+  display: flex; align-items: center;
+}
+.brand.brand-has-logo .brand-name { display: none; }
+.brand.brand-has-logo .brand-sub {
+  font-size: .68rem; letter-spacing: .2em; color: var(--ink); font-weight: 700;
+  padding-left: .9rem; margin-left: .3rem; border-left: 1px solid var(--line);
+}
+@media (max-width: 860px) { .brand.brand-has-logo .brand-text { display: none; } }
 .site-footer .brand-logo svg { height: 76px; }
 @media (max-width: 640px) { .brand-logo svg { height: 44px; } }
 

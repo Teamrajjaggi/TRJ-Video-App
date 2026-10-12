@@ -116,7 +116,7 @@ function header(currentPath) {
       ${brandMark()}
       <span class="brand-text">
         <span class="brand-name">${esc(brand.name)}</span>
-        <span class="brand-sub">${esc(brand.brokerage || brand.market + " Real Estate")}</span>
+        <span class="brand-sub">${esc(brand.brokerage || brand.name)}</span>
       </span>
     </a>
     <nav class="site-nav" aria-label="Main">
@@ -191,7 +191,7 @@ function footer() {
     </div>
   </div>
   <div class="wrap footer-legal">
-    <p>*Guarantee terms are agreed in writing before listing. Seller and ${esc(brand.name)} must agree on price and timeline. Not every home qualifies. Full terms provided at the listing appointment.</p>
+    <p>*Guarantee terms are agreed in writing before listing. Seller and ${esc(brand.teamName)} must agree on price and timeline. Not every home qualifies. Full terms provided at the listing appointment.</p>
     <p>&copy; ${year} ${esc(brand.legalName)}. All rights reserved.${brand.brokerage ? ' ' + esc(brand.brokerage) + '.' : ''} Licensed real estate salespersons in the State of New York.</p>
     <p class="fair-housing"><span class="eho" aria-hidden="true">EHO</span> Equal Housing Opportunity. Information deemed reliable but not guaranteed. Listing data is provided for consumers' personal, non-commercial use.</p>
   </div>
@@ -248,7 +248,7 @@ function page(opts) {
     bodyClass = '',
   } = opts;
 
-  const fullTitle = title ? `${title} | ${brand.name}` : `${brand.name} | ${brand.market} Real Estate`;
+  const fullTitle = title ? `${title} | ${brand.name}` : `${brand.name} | ${brand.teamName}, ${brand.market}`;
   const canonical = brand.baseUrl + (path === '/' ? '' : path);
 
   return `<!doctype html>

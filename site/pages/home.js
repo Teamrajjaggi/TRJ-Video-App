@@ -16,7 +16,7 @@ module.exports = function home() {
 ${c.hero({
   eyebrow: brand.positioning,
   title: `Your Home Sold Guaranteed<br><span class="accent">or I'll Buy It</span>`,
-  subtitle: `${brand.name} is the #1 home selling team on Long Island. More than 1,000 families served, 500+ five-star reviews, and the price and timeline agreed in writing before your home reaches the market.`,
+  subtitle: `${brand.teamName} at ${brand.name} sells more homes on Long Island than almost anyone. 65,000+ buyers in our database, hundreds of five-star reviews, and the price and timeline agreed in writing before your home reaches the market.`,
   actions: [
     { label: 'What Is My Home Worth?', href: '/home-valuation' },
     { label: 'Search Homes', href: '/home-search', style: 'secondary' },

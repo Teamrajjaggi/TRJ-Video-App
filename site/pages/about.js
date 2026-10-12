@@ -13,7 +13,7 @@ function teamPage() {
   const body = `
 ${c.pageHeader({
   eyebrow: 'About us',
-  title: `Meet ${esc(brand.name)}`,
+  title: `Meet ${esc(brand.teamName)}`,
   text: 'A listing department, a buyer department, and a transaction manager — so no part of your deal waits on one person’s calendar.',
 })}
 

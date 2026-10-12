@@ -111,7 +111,7 @@ ${c.pageHeader({
       ${c.sectionHead({ eyebrow: 'Read this part', title: 'The conditions, stated plainly' })}
       <p>A guarantee only means something if you can read it. Here is what has to be true for a home to qualify:</p>
       <ul class="check-list">
-        <li>Seller and ${esc(brand.name)} agree on the list price and the guaranteed price in writing before listing.</li>
+        <li>Seller and ${esc(brand.teamName)} agree on the list price and the guaranteed price in writing before listing.</li>
         <li>Clear, marketable title.</li>
         <li>Reasonable showing access during the guarantee window.</li>
         <li>Agreed repairs and preparation completed before the home goes live.</li>

@@ -1,6 +1,6 @@
 # teamrajjaggi.com — marketing site
 
-A server-rendered marketing and lead-capture site for **Your Home Sold Guaranteed — Team Raj Jaggi**, modeled on the structure of jakobovgroup.com and adapted to the Long Island market.
+A server-rendered marketing and lead-capture site for **Jaggi Real Estate** — the company — and **Team Raj Jaggi**, the team inside it that clients know from the guarantee, modeled on the structure of jakobovgroup.com and adapted to the Long Island market.
 
 It runs completely independently of the video-review app in the repo root: its own port, its own static root, its own routes. Nothing in `server.js`, `lib/`, or `public/` at the repo root is touched.
 
@@ -95,6 +95,12 @@ Reliability, in order:
 ## Configuration
 
 Everything is env-driven — see `.env.example` in the repo root for the full list with defaults. Nothing is required to boot; unset CINC variables simply disable the two pathways above.
+
+`config.js` carries both names: `brand.name` ("Jaggi Real Estate") brands the
+site — titles, header, footer, copyright, schema.org — while `brand.teamName`
+("Team Raj Jaggi") is used where the team itself is meant: the guarantee terms,
+the open-house flyer heading, and the "meet the team" page. Client reviews quote
+whichever name the client used and are never rewritten.
 
 Brand, phone numbers, address, social links, stats, and the guarantee wording all live in `config.js` and `data/`, so a rebrand or a copy change never requires touching a template.
 

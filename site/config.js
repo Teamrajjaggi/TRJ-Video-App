@@ -14,10 +14,15 @@ function bool(v, fallback = false) {
 }
 
 const brand = {
-  name: env.SITE_BRAND_NAME || 'Team Raj Jaggi',
-  legalName: env.SITE_LEGAL_NAME || 'Team Raj Jaggi — Your Home Sold Guaranteed',
-  // Empty by default: no brokerage affiliation is shown anywhere on the site.
-  // Set SITE_BROKERAGE to surface one in the header, footer, and agent bios.
+  // The company is Jaggi Real Estate. Team Raj Jaggi is the team inside it, and
+  // the name clients know from the guarantee and the open-house flyers, so both
+  // are kept: `name` brands the site, `teamName` is used where the team is what
+  // is actually being referred to.
+  name: env.SITE_BRAND_NAME || 'Jaggi Real Estate',
+  teamName: env.SITE_TEAM_NAME || 'Team Raj Jaggi',
+  legalName: env.SITE_LEGAL_NAME || 'Jaggi Real Estate',
+  // The licensed brokerage line. Same company here, so it is left empty rather
+  // than printing "Jaggi Real Estate · Jaggi Real Estate" under every bio.
   brokerage: env.SITE_BROKERAGE || '',
   tagline: env.SITE_TAGLINE || "Your Home Sold Guaranteed or I'll Buy It",
   positioning: env.SITE_POSITIONING || 'Home Buying & Selling System',
