@@ -160,7 +160,9 @@ window.__PAGES__ = ${JSON.stringify(pages).replace(/<\/script>/gi, '<\\/script>'
 })();
 </script>`;
 
-const html = `<title>Team Raj Jaggi — Site Preview</title>
+const { brand } = require('../config');
+
+const html = `<title>${brand.name} — Site Preview</title>
 <style>
 ${css}
 #preview-bar {
@@ -179,7 +181,7 @@ ${css}
 </style>
 <div id="app"></div>
 <script>document.documentElement.className+=' js';</script>
-<div id="preview-bar">Clickable preview &middot; every page is live</div>
+<div id="preview-bar">${brand.name} &middot; clickable preview</div>
 <div id="preview-note"></div>
 ${routerJs}
 <script>
